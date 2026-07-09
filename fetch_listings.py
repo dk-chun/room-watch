@@ -292,13 +292,16 @@ JS = """
 let sales='전세',sortKey='commute',sepOnly=true;   // 기본: 방 분리만 (오픈형 원룸은 버튼으로 켜기)
 function render(){
  const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value;
+ let cj=0,cw=0;
  document.querySelectorAll('.card').forEach(c=>{
-  let ok=c.dataset.sales===sales;
-  if(ok&&sepOnly&&c.dataset.room==='오픈형원룸')ok=false;
-  if(ok&&sales==='전세'&&dc&&+c.dataset.deposit>+dc*10000)ok=false;
-  if(ok&&sales==='월세'&&rc&&+c.dataset.rent>+rc)ok=false;
-  c.classList.toggle('hidden',!ok);
+  const isJ=c.dataset.sales==='전세';
+  const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸');
+  const capOK=isJ?(!dc||+c.dataset.deposit<=+dc*10000):(!rc||+c.dataset.rent<=+rc);
+  if(sepOK&&capOK){if(isJ)cj++;else cw++;}          // 탭 숫자 = 현재 필터 통과 수
+  c.classList.toggle('hidden',!(c.dataset.sales===sales&&sepOK&&capOK));
  });
+ const tabs=document.querySelectorAll('.tab');
+ tabs[0].textContent='전세 '+cj; tabs[1].textContent='월세 '+cw;
  const g=document.querySelector('.grid');
  [...g.children].filter(c=>!c.classList.contains('hidden'))
   .sort((a,b)=>sortKey==='m2'?(+b.dataset.m2)-(+a.dataset.m2):(+a.dataset[sortKey])-(+b.dataset[sortKey])).forEach(c=>g.appendChild(c));
