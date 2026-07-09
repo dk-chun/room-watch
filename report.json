@@ -1,0 +1,15 @@
+{
+  "snapshot": "2026-07-09-0522",
+  "total": 192,
+  "total_by_sales": {
+    "전세": 11,
+    "월세": 181
+  },
+  "baseline": false,
+  "prev_snapshot": "2026-07-09-0444",
+  "new": [],
+  "removed": [],
+  "price_changed": [],
+  "unchanged": 192,
+  "dashboard": "public/index.html"
+}
