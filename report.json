@@ -1,15 +1,43 @@
 {
-  "snapshot": "2026-07-09-0543",
+  "snapshot": "2026-07-09-0604",
   "total": 192,
   "total_by_sales": {
     "전세": 11,
     "월세": 181
   },
   "baseline": false,
-  "prev_snapshot": "2026-07-09-0522",
-  "new": [],
-  "removed": [],
+  "prev_snapshot": "2026-07-09-0543",
+  "new": [
+    {
+      "id": 49656232,
+      "sales": "월세",
+      "deposit": 120,
+      "rent": 80,
+      "m2": 32.23,
+      "floor": "3/4",
+      "svc": "원룸",
+      "addr": "강남구 역삼동",
+      "approve": "2003",
+      "commute": "1177m 강남셔틀",
+      "link": "https://www.zigbang.com/home/oneroom/items/49656232"
+    }
+  ],
+  "removed": [
+    {
+      "id": 49627428,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 90,
+      "m2": 28.64,
+      "floor": "고/12",
+      "svc": "오피스텔",
+      "addr": "강남구 역삼동",
+      "approve": "2004",
+      "commute": "658m 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49627428"
+    }
+  ],
   "price_changed": [],
-  "unchanged": 192,
+  "unchanged": 191,
   "dashboard": "public/index.html"
 }
