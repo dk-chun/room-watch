@@ -48,11 +48,11 @@ jobs:
           ls -1 snapshots/*.json | sort | head -n -10 | xargs -r rm -f
           echo "남은 스냅샷: $(ls -1 snapshots/*.json | wc -l)개"
 
-      - name: 스냅샷 커밋
+      - name: 스냅샷 + diff 리포트 커밋
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add snapshots/
+          git add snapshots/ report.json
           git diff --cached --quiet && echo "변동 없음" || {
             git commit -q -m "snapshot: $(date -u -d '+9 hours' +%Y-%m-%d\ %H:%M) KST"
             git push

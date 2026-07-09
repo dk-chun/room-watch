@@ -287,7 +287,7 @@ body.dark .rt.mid{background:#2c2f36;color:#aaa}
 .sparktip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap;transform:translate(-50%,-135%);opacity:0;transition:opacity .08s;z-index:5;box-shadow:0 3px 12px var(--shadow)}
 """
 JS = """
-let sales='전세',sortKey='commute',sepOnly=false;
+let sales='전세',sortKey='commute',sepOnly=true;   // 기본: 방 분리만 (오픈형 원룸은 버튼으로 켜기)
 function render(){
  const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value;
  document.querySelectorAll('.card').forEach(c=>{
@@ -402,7 +402,7 @@ def build_html(rows, report, ts):
  <button class="sortb" onclick="setSort('m2',this)">면적순</button>
  <button class="sortb" onclick="setSort('rtdiff',this)">실거래저평가순</button>
  <span style="width:10px"></span>
- <button onclick="toggleSep(this)">🚪 방 분리만</button>
+ <button class="on" onclick="toggleSep(this)">🚪 방 분리만</button>
  <span style="width:10px"></span>
  보증금<input id="dcap" type="number" placeholder="상한" oninput="render()">억
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
