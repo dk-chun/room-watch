@@ -1,0 +1,41 @@
+name: API check
+# GitHub Actions(Azure IP)에서 직방·국토부 API가 차단되는지 확인용. 수동 실행.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 직방 API (지역검색 / 매물목록 / 매물상세 / bls 실거래)
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+          echo "== zigbang =="
+          for U in \
+            "https://apis.zigbang.com/v2/search?q=%EC%97%AD%EC%82%BC%EB%8F%99" \
+            "https://apis.zigbang.com/v2/items/oneroom?geohash=wydm6&domain=zigbang&checkAnyItemWithoutFilter=true" \
+            "https://apis.zigbang.com/v3/items/49287811?domain=zigbang" \
+            "https://apis.zigbang.com/v2/bls/1168010100107410033/rts"; do
+            code=$(curl -s -m 25 -o /tmp/body -w "%{http_code}" -H "User-Agent: $UA" "$U")
+            echo "[$code] ${U:0:70}"
+            echo "  body: $(head -c 120 /tmp/body)"
+          done
+
+      - name: 국토부 실거래 API (오피/연립/단독)
+        env:
+          MOLIT_KEY: ${{ secrets.MOLIT_KEY }}
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+          echo "== molit =="
+          if [ -z "$MOLIT_KEY" ]; then echo "!! MOLIT_KEY secret 없음"; exit 1; fi
+          for S in RTMSDataSvcOffiRent RTMSDataSvcRHRent RTMSDataSvcSHRent; do
+            code=$(curl -s -m 25 -o /tmp/m -w "%{http_code}" -A "$UA" \
+              "https://apis.data.go.kr/1613000/$S/get$S?serviceKey=$MOLIT_KEY&LAWD_CD=11680&DEAL_YMD=202606&numOfRows=2&_type=json")
+            echo "[$code] $S"
+            echo "  body: $(head -c 140 /tmp/m)"
+          done
+
+      - name: 이미지 CDN (대시보드 썸네일)
+        run: |
+          curl -s -o /dev/null -w "zigbang img: %{http_code} %{content_type}\n" \
+            -H "User-Agent: Mozilla/5.0" "https://ic.zigbang.com/ic/items/49287811/1.jpg?w=280&h=210&q=70"
