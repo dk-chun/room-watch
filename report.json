@@ -1,12 +1,12 @@
 {
-  "snapshot": "2026-07-10-0226",
+  "snapshot": "2026-07-10-0242",
   "total": 214,
   "total_by_sales": {
     "전세": 37,
     "월세": 177
   },
   "baseline": false,
-  "prev_snapshot": "2026-07-10-0215",
+  "prev_snapshot": "2026-07-10-0226",
   "new": [],
   "removed": [],
   "price_changed": [],
