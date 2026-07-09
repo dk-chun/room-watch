@@ -5,9 +5,11 @@
 - snapshots/<ts>.json 저장(비교 기준, 지우지 말 것)
 """
 import urllib.request, urllib.parse, json, math, os, glob, statistics
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
+
+KST = timezone(timedelta(hours=9))   # CI 러너는 UTC라 명시하지 않으면 9시간 어긋남
 
 # ===== CONFIG (조건 바꾸려면 여기만 수정) =====
 STATIONS = {'신논현': (37.50466, 127.02503), '강남': (37.49794, 127.02762),
@@ -130,7 +132,7 @@ def link(r):
     return f"https://www.zigbang.com/home/{SVC_PATH.get(r['svc'], 'oneroom')}/items/{r['id']}"
 
 def recent_months(n):
-    now = datetime.now(); y, m = now.year, now.month; out = []
+    now = datetime.now(KST); y, m = now.year, now.month; out = []
     for _ in range(n):
         out.append(f'{y}{m:02d}'); m -= 1
         if m == 0: m = 12; y -= 1
@@ -433,7 +435,7 @@ def main():
     attach_realprice(rows)   # 각 매물에 실거래 시세(r['rt']) 부착
 
     prev_files = sorted(glob.glob(SNAP_DIR + '/*.json'))
-    ts = datetime.now().strftime('%Y-%m-%d-%H%M')
+    ts = datetime.now(KST).strftime('%Y-%m-%d-%H%M')
     report = {'snapshot': ts, 'total': len(cur),
               'total_by_sales': {s: sum(1 for r in rows if r['sales'] == s) for s in ('전세', '월세')}}
 
