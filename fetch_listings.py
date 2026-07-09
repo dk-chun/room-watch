@@ -303,7 +303,7 @@ function render(){
 }
 function setSales(s,e){sales=s;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
 function setSort(k,e){sortKey=k;document.querySelectorAll('.sortb').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
-function toggleSep(e){sepOnly=!sepOnly;e.classList.toggle('on',sepOnly);render()}
+function toggleSep(e){sepOnly=!sepOnly;e.classList.toggle('on',!sepOnly);render()}   // 버튼 ON = 오픈형 포함 중
 function toggleDark(e){const d=document.body.classList.toggle('dark');localStorage.setItem('rw_dark',d?'1':'0');e.textContent=d?'☀️ 라이트':'🌙 다크'}
 (function(){const s=localStorage.getItem('rw_dark');const dark=s===null?matchMedia('(prefers-color-scheme:dark)').matches:s==='1';if(dark)document.body.classList.add('dark')})();
 function _eok(v){return v>=10000?(v/10000).toFixed(2).replace(/\\.?0+$/,'')+'억':v+'만'}
@@ -402,7 +402,7 @@ def build_html(rows, report, ts):
  <button class="sortb" onclick="setSort('m2',this)">면적순</button>
  <button class="sortb" onclick="setSort('rtdiff',this)">실거래저평가순</button>
  <span style="width:10px"></span>
- <button class="on" onclick="toggleSep(this)">🚪 방 분리만</button>
+ <button onclick="toggleSep(this)">🏠 오픈형 원룸 포함</button>
  <span style="width:10px"></span>
  보증금<input id="dcap" type="number" placeholder="상한" oninput="render()">억
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
