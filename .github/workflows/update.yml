@@ -1,0 +1,75 @@
+name: 매물 업데이트
+
+on:
+  schedule:
+    - cron: '0 22 * * *'      # 매일 07:00 KST (UTC 22:00, 전날)
+  workflow_dispatch:           # 수동 실행
+
+permissions:
+  contents: write              # 스냅샷 커밋
+  pages: write                 # Pages 배포
+  id-token: write
+
+concurrency:                   # 동시 실행 방지
+  group: room-watch
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 국토부 실거래 캐시 복원
+        uses: actions/cache@v4
+        with:
+          path: rt_cache
+          key: rt-cache-${{ github.run_id }}
+          restore-keys: |
+            rt-cache-
+
+      - name: 매물 수집 + 실거래 대조 + 대시보드 생성
+        env:
+          MOLIT_KEY: ${{ secrets.MOLIT_KEY }}
+          DASHBOARD_PATH: public/index.html
+        run: |
+          mkdir -p public
+          python fetch_listings.py | tee report.json
+          echo "--- 요약 ---"
+          python -c "import json;d=json.load(open('report.json'));print('총',d['total'],d['total_by_sales']);print('신규',len(d.get('new',[])),'빠짐',len(d.get('removed',[])),'가격변동',len(d.get('price_changed',[])))"
+
+      - name: 오래된 스냅샷 정리 (최근 10개만 유지)
+        run: |
+          ls -1 snapshots/*.json | sort | head -n -10 | xargs -r git rm -q --cached
+          ls -1 snapshots/*.json | sort | head -n -10 | xargs -r rm -f
+          echo "남은 스냅샷: $(ls -1 snapshots/*.json | wc -l)개"
+
+      - name: 스냅샷 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshots/
+          git diff --cached --quiet && echo "변동 없음" || {
+            git commit -q -m "snapshot: $(date -u -d '+9 hours' +%Y-%m-%d\ %H:%M) KST"
+            git push
+          }
+
+      - name: 대시보드 아티팩트 업로드
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: GitHub Pages 배포
+        id: deployment
+        uses: actions/deploy-pages@v4
