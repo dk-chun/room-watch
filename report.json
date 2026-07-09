@@ -1,15 +1,42 @@
 {
-  "snapshot": "2026-07-10-0242",
-  "total": 214,
+  "snapshot": "2026-07-10-0813",
+  "total": 212,
   "total_by_sales": {
-    "전세": 37,
-    "월세": 177
+    "전세": 36,
+    "월세": 176
   },
   "baseline": false,
-  "prev_snapshot": "2026-07-10-0226",
+  "prev_snapshot": "2026-07-10-0242",
   "new": [],
-  "removed": [],
+  "removed": [
+    {
+      "id": 49301174,
+      "sales": "월세",
+      "deposit": 1500,
+      "rent": 100,
+      "m2": 36.23,
+      "floor": "1/2",
+      "svc": "빌라",
+      "addr": "서초구 양재동",
+      "approve": "1988",
+      "commute": "314m 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49301174"
+    },
+    {
+      "id": 49301541,
+      "sales": "전세",
+      "deposit": 70000,
+      "rent": 0,
+      "m2": 113.65,
+      "floor": "3/3",
+      "svc": "빌라",
+      "addr": "서초구 양재동",
+      "approve": "1988",
+      "commute": "589m 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49301541"
+    }
+  ],
   "price_changed": [],
-  "unchanged": 214,
+  "unchanged": 212,
   "dashboard": "public/index.html"
 }
