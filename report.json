@@ -1,43 +1,121 @@
 {
-  "snapshot": "2026-07-09-0604",
-  "total": 192,
+  "snapshot": "2026-07-09-1656",
+  "total": 194,
   "total_by_sales": {
     "전세": 11,
-    "월세": 181
+    "월세": 183
   },
   "baseline": false,
-  "prev_snapshot": "2026-07-09-0543",
+  "prev_snapshot": "2026-07-09-0604",
   "new": [
     {
-      "id": 49656232,
+      "id": 49658295,
       "sales": "월세",
-      "deposit": 120,
-      "rent": 80,
-      "m2": 32.23,
-      "floor": "3/4",
-      "svc": "원룸",
+      "deposit": 200,
+      "rent": 200,
+      "m2": 28.18,
+      "floor": "고/10",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2024",
+      "commute": "521m 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49658295"
+    },
+    {
+      "id": 49657564,
+      "sales": "월세",
+      "deposit": 130,
+      "rent": 130,
+      "m2": 33.59,
+      "floor": "12/15",
+      "svc": "오피스텔",
+      "addr": "강남구 역삼동",
+      "approve": "2004",
+      "commute": "622m 양재셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49657564"
+    },
+    {
+      "id": 49661193,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 85,
+      "m2": 32.99,
+      "floor": "중/11",
+      "svc": "오피스텔",
       "addr": "강남구 역삼동",
       "approve": "2003",
-      "commute": "1177m 강남셔틀",
-      "link": "https://www.zigbang.com/home/oneroom/items/49656232"
+      "commute": "633m 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49661193"
+    },
+    {
+      "id": 49658226,
+      "sales": "월세",
+      "deposit": 150,
+      "rent": 100,
+      "m2": 28.64,
+      "floor": "중/12",
+      "svc": "오피스텔",
+      "addr": "강남구 역삼동",
+      "approve": "2004",
+      "commute": "750m 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49658226"
+    },
+    {
+      "id": 49657276,
+      "sales": "월세",
+      "deposit": 100,
+      "rent": 100,
+      "m2": 30.52,
+      "floor": "5/7",
+      "svc": "오피스텔",
+      "addr": "강남구 역삼동",
+      "approve": "2012",
+      "commute": "1086m 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49657276"
     }
   ],
   "removed": [
     {
-      "id": 49627428,
+      "id": 49647714,
       "sales": "월세",
       "deposit": 1000,
-      "rent": 90,
-      "m2": 28.64,
+      "rent": 100,
+      "m2": 29.39,
       "floor": "고/12",
       "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2003",
+      "commute": "296m 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49647714"
+    },
+    {
+      "id": 49530825,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 80,
+      "m2": 28.08,
+      "floor": "고/15",
+      "svc": "오피스텔",
       "addr": "강남구 역삼동",
-      "approve": "2004",
-      "commute": "658m 강남셔틀",
-      "link": "https://www.zigbang.com/home/officetel/items/49627428"
+      "approve": "1999",
+      "commute": "545m 양재셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49530825"
+    },
+    {
+      "id": 49650410,
+      "sales": "월세",
+      "deposit": 80,
+      "rent": 80,
+      "m2": 27,
+      "floor": "4/5",
+      "svc": "원룸",
+      "addr": "강남구 역삼동",
+      "approve": "2002",
+      "commute": "797m 강남셔틀",
+      "link": "https://www.zigbang.com/home/oneroom/items/49650410"
     }
   ],
   "price_changed": [],
-  "unchanged": 191,
+  "unchanged": 189,
   "dashboard": "public/index.html"
 }
