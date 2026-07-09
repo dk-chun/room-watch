@@ -342,7 +342,12 @@ function drawSpark(el){
  svg.addEventListener('mouseleave',function(){tip.style.opacity=0});
  svg.addEventListener('click',function(e){e.preventDefault();e.stopPropagation()});
 }
-window.onload=function(){render();if(document.body.classList.contains('dark'))document.getElementById('darkbtn').textContent='☀️ 라이트';document.querySelectorAll('.spark').forEach(drawSpark)};
+// 사진 로드를 기다리는 onload 대신 DOMContentLoaded → 필터가 첫 페인트 직후 적용됨
+document.addEventListener('DOMContentLoaded',function(){
+ render();
+ if(document.body.classList.contains('dark'))document.getElementById('darkbtn').textContent='☀️ 라이트';
+ document.querySelectorAll('.spark').forEach(drawSpark);
+});
 """
 
 def build_html(rows, report, ts):
@@ -375,7 +380,9 @@ def build_html(rows, report, ts):
                 pos = f'하위 {pct}% (싼 편)' if pct <= 50 else f'상위 {100 - pct}% (비싼 편)'
                 rtline = f'<div class="rt {cls}">📊 동네 {r["m2"]:.0f}㎡ 실거래 {pos} ({rt["n"]}건) ·참고</div>'
         sparkdiv = f'<div class="spark" data-id="{r["id"]}"></div>' if (rt and rt.get('hist')) else ''
-        cards.append(f'''<a class="card {st}" href="{link(r)}" target="_blank" rel="noopener"
+        # 초기 화면(전세탭 + 오픈형 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
+        init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸') else ''
+        cards.append(f'''<a class="card {st}{init_hide}" href="{link(r)}" target="_blank" rel="noopener"
  data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('cd') or 9999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
@@ -388,6 +395,9 @@ def build_html(rows, report, ts):
         change = (f"🆕 신규 {len(report['new'])} · ❌ 빠짐 {len(report['removed'])} · "
                   f"💰 가격변동 {len(report['price_changed'])} (직전 {report['prev_snapshot']} 대비)")
     tj, tw = report['total_by_sales']['전세'], report['total_by_sales']['월세']
+    # 탭 초기 숫자 = 기본 필터(오픈형 제외) 반영 → JS 돌기 전에도 숫자가 맞음
+    vj = sum(1 for r in rows if r['sales'] == '전세' and r.get('room') != '오픈형원룸')
+    vw = sum(1 for r in rows if r['sales'] == '월세' and r.get('room') != '오픈형원룸')
     rt_data = {}
     for r in rows:
         rt = r.get('rt')
@@ -401,8 +411,8 @@ def build_html(rows, report, ts):
 <header><h1>🏠 방 매물 <span style="font-size:13px;color:#888">({ts} 갱신)</span></h1>
 <div class="sum">현재 <b>{len(rows)}건</b> · 전세 {tj} / 월세 {tw} &nbsp;|&nbsp; {change}</div></header>
 <div class="controls">
- <button class="tab on" onclick="setSales('전세',this)">전세 {tj}</button>
- <button class="tab" onclick="setSales('월세',this)">월세 {tw}</button>
+ <button class="tab on" onclick="setSales('전세',this)">전세 {vj}</button>
+ <button class="tab" onclick="setSales('월세',this)">월세 {vw}</button>
  <span style="width:10px"></span>
  <button class="sortb on" onclick="setSort('commute',this)">통근순</button>
  <button class="sortb" onclick="setSort('deposit',this)">보증금순</button>
