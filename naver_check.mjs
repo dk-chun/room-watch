@@ -13,7 +13,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const child = spawn(CHROME, [
   '--headless=new','--disable-gpu','--no-sandbox','--disable-dev-shm-usage',
   `--remote-debugging-port=${PORT}`,'--remote-debugging-address=127.0.0.1','--lang=ko-KR',
-  `--user-agent=${UA}`, URL0,
+  `--user-agent=${UA}`, 'about:blank',
 ], { stdio: ['ignore','pipe','pipe'] });
 let clog = '';
 child.stderr.on('data', d => clog += d);
@@ -58,6 +58,10 @@ ws.addEventListener('message', e => {
 
 await cdp(ws, 'Network.enable');
 await cdp(ws, 'Runtime.enable');
+await cdp(ws, 'Page.enable');
+
+// 커맨드라인 URL 인자를 무시하는 크롬 빌드가 있어(CI) 명시적으로 이동시킨다
+await cdp(ws, 'Page.navigate', { url: URL0 });
 
 // 앱이 스스로 /api/* 를 쏘면서 실어보내는 Authorization 헤더를 가로챈다
 for (let i = 0; i < 50 && !capToken; i++) await sleep(500);
