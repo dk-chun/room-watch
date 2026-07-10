@@ -46,6 +46,7 @@ const ws = new WebSocket(tgt.webSocketDebuggerUrl);
 await new Promise((res, rej) => { ws.addEventListener('open', res); ws.addEventListener('error', rej); });
 
 let capToken = null;
+const netFails = [];
 ws.addEventListener('message', e => {
   const j = JSON.parse(e.data);
   if (j.id && pend.has(j.id)) { const [res, rej] = pend.get(j.id); pend.delete(j.id); j.error ? rej(new Error(JSON.stringify(j.error))) : res(j.result); return; }
@@ -54,6 +55,7 @@ ws.addEventListener('message', e => {
     const auth = h.Authorization || h.authorization;
     if (auth && /^Bearer /.test(auth) && j.params.request.url.includes('/api/') && !capToken) capToken = auth;
   }
+  if (j.method === 'Network.loadingFailed') netFails.push({ url: (j.params.type || '') + ' ' + (j.params.errorText || ''), blocked: j.params.blockedReason });
 });
 
 await cdp(ws, 'Network.enable');
@@ -61,7 +63,8 @@ await cdp(ws, 'Runtime.enable');
 await cdp(ws, 'Page.enable');
 
 // 커맨드라인 URL 인자를 무시하는 크롬 빌드가 있어(CI) 명시적으로 이동시킨다
-await cdp(ws, 'Page.navigate', { url: URL0 });
+const nav = await cdp(ws, 'Page.navigate', { url: URL0 }).catch(e => ({ errorText: String(e) }));
+if (nav.errorText) console.log('navigate errorText:', nav.errorText);
 
 // 앱이 스스로 /api/* 를 쏘면서 실어보내는 Authorization 헤더를 가로챈다
 for (let i = 0; i < 50 && !capToken; i++) await sleep(500);
@@ -76,6 +79,7 @@ const diag = await cdp(ws, 'Runtime.evaluate', { expression: `(async()=>{
   return JSON.stringify(o);
 })()`, awaitPromise: true, returnByValue: true });
 console.log('diag:', diag.result.value);
+console.log('netFails:', JSON.stringify(netFails.slice(0, 8)));
 
 if (!capToken) fail('토큰 미포착. 위 diag 판독 → noAuthStatus 429=IP째 지문차단(브라우저도 못뚫음) / 401=지문통과인데 SPA 렌더 지연으로 토큰만 못딴 것 / bodyLen 0=페이지 자체가 안 뜸');
 
