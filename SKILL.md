@@ -53,6 +53,26 @@ gh workflow run update.yml -R dk-chun/room-watch   # 5~18분 소요, 이후 git 
 
 채팅에 매물 표를 길게 나열하지 말 것 — 그게 대시보드를 만든 이유임.
 
+## 네이버 부동산 (로컬 온디맨드 전용)
+
+직방과 별개로 **네이버 매물**도 볼 수 있음. 사용자가 "네이버도 봐줘" 하면:
+
+```
+node <이 스킬 경로>/naver_fetch.mjs      # 5~8분, 바탕화면 방매물_네이버.html 생성
+```
+
+⚠️ **CI 자동화 불가.** GitHub Actions(Azure IP)는 네이버가 `net::ERR_CONNECTION_RESET`으로
+네트워크 레벨 차단함(2026-07-10 검증). **로컬(가정용 IP)에서만** 됨. 크론에 넣지 말 것.
+재검증하려면 `gh workflow run naver_check.yml -R dk-chun/room-watch`(수동, 실패가 정상).
+
+- 방식: 헤드리스 크롬(CDP)으로 SPA가 쏘는 `Authorization` Bearer 토큰을 가로채 in-page fetch.
+  curl은 무조건 429(TLS 지문차단)라 못 씀. node 내장 WebSocket만 사용(설치 의존성 0).
+- 필터·통근 로직은 직방과 동일(전용 9평+, 최근접역 1.2km, 신논현 이북 제외).
+  **가격 컷 없음(recall)** → 1000건 넘게 나옴, 15억 전세도 섞임. precision은 사람이.
+- 네이버가 직방보다 데이터 풍부: **실좌표·건물명·방개수(상세API)·동일주소 매물수** 노출
+  (직방은 다 흐려서 pnu로 우회해야 했음). 전세 인벤토리가 직방(37건)보다 압도적(400+건).
+- 실거래 대조는 아직 미구현(v1). 필요하면 건물명/좌표로 붙이기 직방보다 쉬움.
+
 ## 조건 변경
 
 `fetch_listings.py` 상단 CONFIG 수정: 역 좌표, `MIN_M2`(면적 하한), `MAX_DIST`(역 거리컷),
