@@ -325,6 +325,8 @@ header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--
 h1{font-size:16px;margin:0 0 6px}.ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 button{border:1px solid var(--line);background:var(--card);color:var(--tx);border-radius:16px;padding:5px 12px;font-size:13px;cursor:pointer}
 button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sorts{font-size:12px;color:var(--sub);display:flex;gap:4px;align-items:center}
+.sortb{padding:4px 10px;font-size:12px}
 label{font-size:13px;color:var(--sub);display:flex;gap:4px;align-items:center;cursor:pointer}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:column}
@@ -346,20 +348,23 @@ input.cap{width:52px;border:1px solid var(--line);background:var(--card);color:v
  <div class="ctl">
   <button id="bJ" class="on" onclick="setSales('전세',this)">전세 <span id="cJ"></span></button>
   <button id="bW" onclick="setSales('월세',this)">월세 <span id="cW"></span></button>
-  <span id="capJ" class="capbox">전세 상한 <input class="cap" id="jMax" type="number" placeholder="억" oninput="render()">억</span>
+  <span id="capJ" class="capbox">전세 상한 <input class="cap" id="jMax" type="number" placeholder="3.5" oninput="render()">억</span>
   <span id="capW" class="capbox" style="display:none">보증금<input class="cap" id="wDep" type="number" placeholder="만" oninput="render()"> 월<input class="cap" id="wRent" type="number" placeholder="만" oninput="render()"></span>
   <span style="flex:1"></span>
   <label><input type="checkbox" id="chkOne" onchange="render()"> 원룸 포함</label>
-  <button id="sortBtn" onclick="cycleSort(this)">통근순</button>
+  <span class="sorts">정렬
+   <button class="sortb on" onclick="setSort('cd',this)">통근순</button>
+   <button class="sortb" onclick="setSort('rtdiff',this)">저평가순</button>
+   <button class="sortb" onclick="setSort('m2',this)">면적순</button>
+  </span>
  </div>
 </header>
 <div class="grid" id="grid">${rows.map(card).join('\n')}</div>
 <script>
-let sales='전세', sortMode='cd';   // cd(통근) → rtdiff(저평가) → m2(면적)
-const SORTS=[['cd','통근순'],['rtdiff','저평가순'],['m2','면적순']];
+let sales='전세', sortMode='cd';   // cd(통근) / rtdiff(저평가) / m2(면적)
 function setSales(s,b){sales=s;document.getElementById('bJ').classList.toggle('on',s==='전세');document.getElementById('bW').classList.toggle('on',s==='월세');
  document.getElementById('capJ').style.display=s==='전세'?'':'none';document.getElementById('capW').style.display=s==='월세'?'':'none';render();}
-function cycleSort(b){const i=SORTS.findIndex(x=>x[0]===sortMode);const nx=SORTS[(i+1)%SORTS.length];sortMode=nx[0];b.textContent=nx[1];render();}
+function setSort(k,b){sortMode=k;document.querySelectorAll('.sortb').forEach(x=>x.classList.toggle('on',x===b));render();}
 function render(){
  const showOne=document.getElementById('chkOne').checked;
  const jMax=parseFloat(document.getElementById('jMax').value)*10000||Infinity;
