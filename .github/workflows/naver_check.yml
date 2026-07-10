@@ -1,0 +1,23 @@
+name: Naver check
+# GitHub Actions(Azure IP)에서 헤드리스 크롬으로 네이버 부동산 매물 수집이 되나 확인용. 수동 실행.
+on:
+  push:
+    paths: ['.github/workflows/naver_check.yml', 'naver_check.mjs']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with:
+          chrome-version: stable
+      - name: 네이버 in-page fetch 200 확인
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: node naver_check.mjs
