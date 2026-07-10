@@ -60,9 +60,20 @@ await cdp(ws, 'Network.enable');
 await cdp(ws, 'Runtime.enable');
 
 // 앱이 스스로 /api/* 를 쏘면서 실어보내는 Authorization 헤더를 가로챈다
-for (let i = 0; i < 30 && !capToken; i++) await sleep(500);
+for (let i = 0; i < 50 && !capToken; i++) await sleep(500);
 console.log('token capture:', capToken ? 'OK (' + capToken.slice(0, 24) + '...)' : 'NONE');
-if (!capToken) fail('앱이 /api 요청을 안 보냄 = 페이지가 렌더 안 됐거나 IP째로 차단된 정황');
+
+// 진단: 페이지가 떴는지 + 토큰 없이 in-page fetch 하면 429(IP지문차단)냐 401(지문통과)이냐
+const diag = await cdp(ws, 'Runtime.evaluate', { expression: `(async()=>{
+  const o={ title:document.title, url:location.href, bodyLen:(document.body?document.body.innerText.length:0) };
+  try{ const r=await fetch('/api/articles?cortarNo=1168010100&realEstateType=OPST&tradeType=B1&page=1',{headers:{'Referer':location.href}});
+    o.noAuthStatus=r.status; o.noAuthBody=(await r.text()).slice(0,80);
+  }catch(e){ o.noAuthErr=String(e); }
+  return JSON.stringify(o);
+})()`, awaitPromise: true, returnByValue: true });
+console.log('diag:', diag.result.value);
+
+if (!capToken) fail('토큰 미포착. 위 diag 판독 → noAuthStatus 429=IP째 지문차단(브라우저도 못뚫음) / 401=지문통과인데 SPA 렌더 지연으로 토큰만 못딴 것 / bodyLen 0=페이지 자체가 안 뜸');
 
 // 가로챈 토큰으로 타깃 지역에 in-page fetch (핑거프린트는 브라우저 컨텍스트라 통과)
 const expr = `(async()=>{
