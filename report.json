@@ -1,56 +1,315 @@
 {
-  "snapshot": "2026-07-11-1825",
-  "total": 746,
+  "snapshot": "2026-07-12-0751",
+  "total": 738,
   "total_by_sales": {
-    "전세": 143,
-    "월세": 603
+    "전세": 141,
+    "월세": 597
   },
   "baseline": false,
-  "prev_snapshot": "2026-07-11-1757",
+  "prev_snapshot": "2026-07-11-1825",
   "new": [
     {
-      "id": 49674443,
+      "id": 49683307,
       "sales": "월세",
       "deposit": 2000,
-      "rent": 260,
-      "m2": 46.93,
-      "floor": "중/14",
+      "rent": 145,
+      "m2": 61.39,
+      "floor": "중/25",
+      "svc": "오피스텔",
+      "addr": "성남시 분당구 서현동",
+      "approve": "2004",
+      "commute": "28분 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49683307"
+    },
+    {
+      "id": 49682841,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 250,
+      "m2": 40.14,
+      "floor": "저/23",
       "svc": "오피스텔",
       "addr": "서초구 서초동",
-      "approve": "2024",
-      "commute": "9분 양재셔틀",
-      "link": "https://www.zigbang.com/home/officetel/items/49674443"
+      "approve": "2025",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49682841"
+    },
+    {
+      "id": 49682785,
+      "sales": "전세",
+      "deposit": 30000,
+      "rent": 0,
+      "m2": 47,
+      "floor": "4/4",
+      "svc": "빌라",
+      "addr": "강남구 역삼동",
+      "approve": "2002",
+      "commute": "15분 양재셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49682785"
+    },
+    {
+      "id": 49682911,
+      "sales": "월세",
+      "deposit": 4000,
+      "rent": 80,
+      "m2": 49.59,
+      "floor": "반지하/3",
+      "svc": "빌라",
+      "addr": "관악구 남현동",
+      "approve": "1996",
+      "commute": "32분 양재셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49682911"
+    },
+    {
+      "id": 49672902,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 300,
+      "m2": 58.82,
+      "floor": "저/20",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2026",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49672902"
     }
   ],
   "removed": [
     {
-      "id": 49560568,
+      "id": 49553783,
       "sales": "전세",
-      "deposit": 26200,
+      "deposit": 37000,
       "rent": 0,
-      "m2": 49.49,
-      "floor": "3/5",
-      "svc": "원룸",
-      "addr": "서초구 서초동",
-      "approve": "2002",
-      "commute": "14분 강남셔틀",
-      "link": "https://www.zigbang.com/home/oneroom/items/49560568"
+      "m2": 29.96,
+      "floor": "3/6",
+      "svc": "빌라",
+      "addr": "서초구 양재동",
+      "approve": "2019",
+      "commute": "11분 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49553783"
     },
     {
-      "id": 49627739,
+      "id": 49669275,
       "sales": "월세",
-      "deposit": 5000,
-      "rent": 55,
-      "m2": 37,
-      "floor": "2/3",
+      "deposit": 10000,
+      "rent": 110,
+      "m2": 75.61,
+      "floor": "3/3",
       "svc": "빌라",
       "addr": "관악구 신림동",
-      "approve": "2016",
-      "commute": "31분 강남셔틀",
-      "link": "https://www.zigbang.com/home/villa/items/49627739"
+      "approve": "1997",
+      "commute": "32분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49669275"
+    },
+    {
+      "id": 49481914,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 350,
+      "m2": 43.05,
+      "floor": "중/19",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2024",
+      "commute": "3분 강남셔틀앞 도보",
+      "link": "https://www.zigbang.com/home/officetel/items/49481914"
+    },
+    {
+      "id": 49585203,
+      "sales": "월세",
+      "deposit": 250,
+      "rent": 210,
+      "m2": 49.85,
+      "floor": "10/22",
+      "svc": "오피스텔",
+      "addr": "강남구 역삼동",
+      "approve": "2006",
+      "commute": "8분 강남셔틀앞 도보",
+      "link": "https://www.zigbang.com/home/officetel/items/49585203"
+    },
+    {
+      "id": 49416859,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 250,
+      "m2": 41.25,
+      "floor": "7/23",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2025",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49416859"
+    },
+    {
+      "id": 49635312,
+      "sales": "전세",
+      "deposit": 44000,
+      "rent": 0,
+      "m2": 80,
+      "floor": "15/25",
+      "svc": "오피스텔",
+      "addr": "성남시 분당구 서현동",
+      "approve": "2004",
+      "commute": "28분 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49635312"
+    },
+    {
+      "id": 49631927,
+      "sales": "월세",
+      "deposit": 45000,
+      "rent": 50,
+      "m2": 80,
+      "floor": "15/25",
+      "svc": "오피스텔",
+      "addr": "성남시 분당구 서현동",
+      "approve": "2004",
+      "commute": "28분 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49631927"
+    },
+    {
+      "id": 49661012,
+      "sales": "월세",
+      "deposit": 5000,
+      "rent": 260,
+      "m2": 40.92,
+      "floor": "10/23",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2025",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49661012"
+    },
+    {
+      "id": 49334321,
+      "sales": "월세",
+      "deposit": 10000,
+      "rent": 65,
+      "m2": 39.67,
+      "floor": "2/3",
+      "svc": "빌라",
+      "addr": "관악구 봉천동",
+      "approve": "1995",
+      "commute": "24분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49334321"
+    },
+    {
+      "id": 49460026,
+      "sales": "전세",
+      "deposit": 30000,
+      "rent": 0,
+      "m2": 45,
+      "floor": "4/4",
+      "svc": "빌라",
+      "addr": "강남구 역삼동",
+      "approve": "2002",
+      "commute": "15분 양재셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/49460026"
+    },
+    {
+      "id": 49476550,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 300,
+      "m2": 58.82,
+      "floor": "2/20",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2026",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49476550"
+    },
+    {
+      "id": 49329376,
+      "sales": "월세",
+      "deposit": 2000,
+      "rent": 200,
+      "m2": 99.5,
+      "floor": "14/15",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "1990",
+      "commute": "17분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49329376"
+    },
+    {
+      "id": 49326243,
+      "sales": "월세",
+      "deposit": 400,
+      "rent": 400,
+      "m2": 47.76,
+      "floor": "15/19",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2024",
+      "commute": "3분 강남셔틀앞 도보",
+      "link": "https://www.zigbang.com/home/officetel/items/49326243"
     }
   ],
-  "price_changed": [],
-  "unchanged": 745,
+  "price_changed": [
+    {
+      "id": 49682910,
+      "sales": "월세",
+      "deposit": 5000,
+      "rent": 320,
+      "m2": 58.82,
+      "floor": "중/20",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2026",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49682910",
+      "before": {
+        "deposit": 5000,
+        "rent": 350
+      },
+      "after": {
+        "deposit": 5000,
+        "rent": 320
+      }
+    },
+    {
+      "id": 49682813,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 220,
+      "m2": 42.1,
+      "floor": "5/16",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2023",
+      "commute": "11분 양재셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49682813",
+      "before": {
+        "deposit": 3000,
+        "rent": 210
+      },
+      "after": {
+        "deposit": 3000,
+        "rent": 220
+      }
+    },
+    {
+      "id": 49682873,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 220,
+      "m2": 40.65,
+      "floor": "고/23",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2025",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/49682873",
+      "before": {
+        "deposit": 2000,
+        "rent": 220
+      },
+      "after": {
+        "deposit": 3000,
+        "rent": 220
+      }
+    }
+  ],
+  "unchanged": 730,
   "dashboard": "public/index.html"
 }
