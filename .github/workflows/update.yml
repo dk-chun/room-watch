@@ -32,9 +32,18 @@ jobs:
           restore-keys: |
             rt-cache-
 
-      - name: 매물 수집 + 실거래 대조 + 대시보드 생성
+      - name: ODsay 통근시간 캐시 복원
+        uses: actions/cache@v4
+        with:
+          path: odsay_cache
+          key: odsay-cache-${{ github.run_id }}
+          restore-keys: |
+            odsay-cache-
+
+      - name: 매물 수집 + 실거래 대조 + 통근시간 + 대시보드 생성
         env:
           MOLIT_KEY: ${{ secrets.MOLIT_KEY }}
+          ODSAY_KEY: ${{ secrets.ODSAY_KEY }}
           DASHBOARD_PATH: public/index.html
         run: |
           mkdir -p public

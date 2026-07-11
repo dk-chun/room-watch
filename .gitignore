@@ -2,3 +2,5 @@
 rt_cache/
 __pycache__/
 *.pyc
+.odsay_key
+odsay_cache/
