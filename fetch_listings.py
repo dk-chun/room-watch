@@ -365,7 +365,7 @@ body.dark .rt.mid{background:#2c2f36;color:#aaa}
 .sparktip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap;transform:translate(-50%,-135%);opacity:0;transition:opacity .08s;z-index:5;box-shadow:0 3px 12px var(--shadow)}
 """
 JS = """
-let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true;   // 기본: 방 분리만 + 용도 둘 다
+let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true,bsmtShow=false;   // 기본: 방 분리만 + 반지하 숨김 + 용도 둘 다
 function render(){
  const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value,tc=document.getElementById('tcap').value;
  const stnOn={}; document.querySelectorAll('.stnchip').forEach(b=>stnOn[b.dataset.stn]=b.classList.contains('on'));
@@ -373,7 +373,7 @@ function render(){
  let cj=0,cw=0,co=0,ch=0;
  document.querySelectorAll('.card').forEach(c=>{
   const isJ=c.dataset.sales==='전세', isO=c.dataset.svcg==='offi';
-  const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸');
+  const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸') && !(!bsmtShow&&c.dataset.bsmt==='1');
   const capOK=(isJ?(!dc||+c.dataset.deposit<=+dc*10000):(!rc||+c.dataset.rent<=+rc)) && (!tc||+c.dataset.commute<=+tc);
   const svcOK=isO?showOffi:showHouse;
   const stnOK=stnOn[c.dataset.stn]!==false;
@@ -402,6 +402,7 @@ function render(){
 function setSales(s,e){sales=s;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
 function setSort(k,e){sortKey=k;document.querySelectorAll('.sortb').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
 function toggleSep(e){sepOnly=!sepOnly;e.classList.toggle('on',!sepOnly);render()}   // 버튼 ON = 오픈형 포함 중
+function toggleBsmt(e){bsmtShow=!bsmtShow;e.classList.toggle('on',bsmtShow);render()}  // 버튼 ON = 반지하·옥탑 포함 중
 function toggleSvc(e,w){   // 마지막 하나는 못 끔(둘 다 끄면 빈 화면)
  if(w==='offi'){ if(showOffi&&!showHouse)return; showOffi=!showOffi; e.classList.toggle('on',showOffi); }
  else { if(showHouse&&!showOffi)return; showHouse=!showHouse; e.classList.toggle('on',showHouse); }
@@ -500,10 +501,11 @@ def build_html(rows, report, ts):
             cmline = '🚆 <span class="dim">통근 미확정(다음 갱신)</span>'
         stn = nearest_stn(r['lat'], r['lng']) if r.get('lat') else '기타'
         present_stn.add(stn)
-        # 초기 화면(전세탭 + 오픈형 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
-        init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸') else ''
+        bsmt = str(r.get('floor')) in ('반지하', '옥탑방')   # 비선호 층(반지하·옥탑) — 기본 숨김
+        # 초기 화면(전세탭 + 오픈형·반지하 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
+        init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸' or bsmt) else ''
         cards.append(f'''<a class="card {st}{init_hide}" href="{link(r)}" target="_blank" rel="noopener"
- data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}">
+ data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
   <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}</div>
@@ -515,11 +517,12 @@ def build_html(rows, report, ts):
         change = (f"🆕 신규 {len(report['new'])} · ❌ 빠짐 {len(report['removed'])} · "
                   f"💰 가격변동 {len(report['price_changed'])} (직전 {report['prev_snapshot']} 대비)")
     tj, tw = report['total_by_sales']['전세'], report['total_by_sales']['월세']
-    # 탭 초기 숫자 = 기본 필터(오픈형 제외) 반영 → JS 돌기 전에도 숫자가 맞음
-    vj = sum(1 for r in rows if r['sales'] == '전세' and r.get('room') != '오픈형원룸')
-    vw = sum(1 for r in rows if r['sales'] == '월세' and r.get('room') != '오픈형원룸')
-    # 용도 칩 초기 숫자 (기본 화면 = 전세탭 + 오픈형 제외)
-    co = sum(1 for r in rows if r['sales'] == '전세' and r.get('room') != '오픈형원룸' and r['svc'] == '오피스텔')
+    # 탭 초기 숫자 = 기본 필터(오픈형·반지하 제외) 반영 → JS 돌기 전에도 숫자가 맞음
+    def _std(r): return r.get('room') != '오픈형원룸' and str(r.get('floor')) not in ('반지하', '옥탑방')
+    vj = sum(1 for r in rows if r['sales'] == '전세' and _std(r))
+    vw = sum(1 for r in rows if r['sales'] == '월세' and _std(r))
+    # 용도 칩 초기 숫자 (기본 화면 = 전세탭 + 오픈형·반지하 제외)
+    co = sum(1 for r in rows if r['sales'] == '전세' and _std(r) and r['svc'] == '오피스텔')
     ch = vj - co
     rt_data = {}
     for r in rows:
@@ -560,6 +563,7 @@ def build_html(rows, report, ts):
  <button id="chipHouse" class="on" onclick="toggleSvc(this,'house')">🏠 빌라·원룸 {ch}</button>
  <span class="sep-line"></span>
  <button onclick="toggleSep(this)">🏠 오픈형 원룸 포함</button>
+ <button onclick="toggleBsmt(this)">🕳 반지하·옥탑 포함</button>
  <span style="width:10px"></span>
  보증금<input id="dcap" type="number" placeholder="상한" oninput="render()">억
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
