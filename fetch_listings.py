@@ -348,6 +348,15 @@ h1{margin:0 0 6px;font-size:18px}.sum{font-size:13px;color:var(--muted)}.sum b{c
 .commute{font-size:12px;color:var(--accent);margin-top:4px;font-weight:600}.commute .dim{color:var(--sub);font-weight:400}.addr{font-size:12px;color:var(--sub);margin-top:3px}
 .ml{margin-left:auto}.hidden{display:none}
 .sep-line{display:inline-block;width:1px;height:20px;background:var(--border);margin:0 3px}
+.regions{padding:7px 20px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--card);border-bottom:1px solid var(--border);font-size:12px;position:sticky;z-index:8}
+.regions{top:105px}.regions.stns{top:146px}
+.rlabel{color:var(--sub);font-weight:600;margin-right:4px}
+.regions button{border:1px solid var(--border);background:var(--card);color:var(--fg);padding:4px 11px;border-radius:14px;cursor:pointer;font-size:12px}
+.guchip{font-weight:700}
+.regions button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.regions.stns button{padding:3px 9px;font-size:11.5px}
+.regions.stns button.on{background:var(--down);border-color:var(--down)}
+.stn-sep{display:inline-block;width:1px;height:14px;background:var(--border);margin:0 2px}
 .rt{font-size:11px;margin-top:5px;padding:3px 6px;border-radius:5px;font-weight:600;display:inline-block}
 .rt.hi{background:#fdecea;color:#c0392b}.rt.lo{background:#e6f8ef;color:#12905a}.rt.mid{background:#eef0f3;color:#666}
 body.dark .rt.mid{background:#2c2f36;color:#aaa}
@@ -359,15 +368,28 @@ JS = """
 let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true;   // 기본: 방 분리만 + 용도 둘 다
 function render(){
  const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value,tc=document.getElementById('tcap').value;
+ const stnOn={}; document.querySelectorAll('.stnchip').forEach(b=>stnOn[b.dataset.stn]=b.classList.contains('on'));
+ const stnCount={};
  let cj=0,cw=0,co=0,ch=0;
  document.querySelectorAll('.card').forEach(c=>{
   const isJ=c.dataset.sales==='전세', isO=c.dataset.svcg==='offi';
   const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸');
   const capOK=(isJ?(!dc||+c.dataset.deposit<=+dc*10000):(!rc||+c.dataset.rent<=+rc)) && (!tc||+c.dataset.commute<=+tc);
   const svcOK=isO?showOffi:showHouse;
-  if(sepOK&&capOK&&svcOK){if(isJ)cj++;else cw++;}                       // 탭 숫자
-  if(c.dataset.sales===sales&&sepOK&&capOK){if(isO)co++;else ch++;}     // 용도칩 숫자(현재 탭 기준)
-  c.classList.toggle('hidden',!(c.dataset.sales===sales&&sepOK&&capOK&&svcOK));
+  const stnOK=stnOn[c.dataset.stn]!==false;
+  if(sepOK&&capOK&&svcOK&&stnOK){if(isJ)cj++;else cw++;}                // 탭 숫자
+  if(c.dataset.sales===sales&&sepOK&&capOK&&stnOK){if(isO)co++;else ch++;} // 용도칩(현재 탭)
+  if(c.dataset.sales===sales&&sepOK&&capOK&&svcOK)                      // 역칩 숫자(현재 탭, 지역필터 무시)
+    stnCount[c.dataset.stn]=(stnCount[c.dataset.stn]||0)+1;
+  c.classList.toggle('hidden',!(c.dataset.sales===sales&&sepOK&&capOK&&svcOK&&stnOK));
+ });
+ document.querySelectorAll('.stnchip').forEach(b=>{                     // 현재 탭 0인 역은 숨김
+  const n=stnCount[b.dataset.stn]||0; b.querySelector('span').textContent=n; b.style.display=n?'':'none';
+ });
+ document.querySelectorAll('.guchip').forEach(b=>{
+  const ss=GU2STN[b.dataset.gu]||[]; const n=ss.reduce((a,s)=>a+(stnCount[s]||0),0);
+  b.querySelector('span').textContent=n; b.style.display=n?'':'none';
+  b.classList.toggle('on',ss.some(s=>stnOn[s]!==false));
  });
  const tabs=document.querySelectorAll('.tab');
  tabs[0].textContent='전세 '+cj; tabs[1].textContent='월세 '+cw;
@@ -383,6 +405,14 @@ function toggleSep(e){sepOnly=!sepOnly;e.classList.toggle('on',!sepOnly);render(
 function toggleSvc(e,w){   // 마지막 하나는 못 끔(둘 다 끄면 빈 화면)
  if(w==='offi'){ if(showOffi&&!showHouse)return; showOffi=!showOffi; e.classList.toggle('on',showOffi); }
  else { if(showHouse&&!showOffi)return; showHouse=!showHouse; e.classList.toggle('on',showHouse); }
+ render();
+}
+function toggleStn(name,el){el.classList.toggle('on');render()}          // 역 단위 다중토글
+function toggleGu(gu,el){                                                 // 구 = 마스터(현재 보이는 역 전부 켜기/끄기)
+ const ss=GU2STN[gu]||[];
+ const chips=[...document.querySelectorAll('.stnchip')].filter(b=>ss.includes(b.dataset.stn)&&b.style.display!=='none');
+ const anyOn=chips.some(b=>b.classList.contains('on'));
+ chips.forEach(b=>b.classList.toggle('on',!anyOn));
  render();
 }
 function toggleDark(e){const d=document.body.classList.toggle('dark');localStorage.setItem('rw_dark',d?'1':'0');e.textContent=d?'☀️ 라이트':'🌙 다크'}
@@ -423,11 +453,21 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 """
 
+# 지역 필터: 최근접 역 → 그 역이 속한 구로 묶음(계층형). 역단위 다중토글, 구는 마스터.
+GU_GROUPS = [('강남구', ['강남', '도곡', '매봉', '신논현']),
+             ('서초구', ['양재', '양재숲', '서초', '교대', '남부터미널', '방배']),
+             ('관악구', ['서울대입구', '신림']),
+             ('동작구', ['사당']),
+             ('경기', ['정자', '판교', '수지구청', '광교중앙'])]
+def nearest_stn(lat, lng):
+    return min(STATIONS, key=lambda k: hav(lat, lng, STATIONS[k][0], STATIONS[k][1]))
+
 def build_html(rows, report, ts):
     def esc(s): return (str(s) if s is not None else '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     def won(v):
         if not v: return '0'
         return (f"{v/10000:.2f}억").replace('.00억', '억') if v >= 10000 else f"{v}만"
+    present_stn = set()
     cards = []
     for r in sorted(rows, key=lambda x: x.get('tmin') if x.get('tmin') is not None else 999):
         st = r.get('_status', '')
@@ -458,10 +498,12 @@ def build_html(rows, report, ts):
             cmline = f'🚆 약 {r.get("tmin")}분 · {esc(r.get("tmode"))}{dist}'
         else:
             cmline = '🚆 <span class="dim">통근 미확정(다음 갱신)</span>'
+        stn = nearest_stn(r['lat'], r['lng']) if r.get('lat') else '기타'
+        present_stn.add(stn)
         # 초기 화면(전세탭 + 오픈형 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
         init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸') else ''
         cards.append(f'''<a class="card {st}{init_hide}" href="{link(r)}" target="_blank" rel="noopener"
- data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}">
+ data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
   <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}</div>
@@ -486,6 +528,19 @@ def build_html(rows, report, ts):
             mine = r['deposit'] if r['sales'] == '전세' else round((r['deposit'] or 0) + (r['rent'] or 0) * 12 / RT_CONV)
             rt_data[r['id']] = {'h': [[x['ym'], x['v'], x['d'], x['r']] for x in rt['hist']], 'm': mine, 'diff': rt['diff']}
     rt_json = json.dumps(rt_data, ensure_ascii=False)
+    # 지역 칩 (계층: 구 마스터 + 역 다중토글). present_stn만.
+    gu_row, stn_row, gu2stn = [], [], {}
+    for gu, stns in GU_GROUPS:
+        ss = [s for s in stns if s in present_stn]
+        if not ss: continue
+        gu2stn[gu] = ss
+        gu_row.append(f'<button class="guchip on" data-gu="{gu}" onclick="toggleGu(\'{gu}\',this)">{gu} <span></span></button>')
+        for s in ss:
+            stn_row.append(f'<button class="stnchip on" data-stn="{s}" data-gu="{gu}" onclick="toggleStn(\'{s}\',this)">{s} <span></span></button>')
+        stn_row.append('<span class="stn-sep"></span>')
+    region_html = (f'<div class="regions"><span class="rlabel">지역</span>{"".join(gu_row)}</div>'
+                   f'<div class="regions stns">{"".join(stn_row)}</div>') if gu2stn else ''
+    gu2stn_json = json.dumps(gu2stn, ensure_ascii=False)
     return f'''<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>방 매물 {ts}</title>
 <style>{CSS}</style></head><body>
@@ -510,8 +565,8 @@ def build_html(rows, report, ts):
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
  통근<input id="tcap" type="number" placeholder="상한" oninput="render()">분↓
  <button id="darkbtn" class="ml" onclick="toggleDark(this)">🌙 다크</button>
-</div><div class="grid">{''.join(cards)}</div>
-<script>const RT_DATA={rt_json};</script>
+</div>{region_html}<div class="grid">{''.join(cards)}</div>
+<script>const RT_DATA={rt_json};const GU2STN={gu2stn_json};</script>
 <script>{JS}</script></body></html>'''
 
 def main():
