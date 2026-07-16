@@ -511,6 +511,8 @@ def build_html(rows, report, ts):
             cmline = '🚆 <span class="dim">통근 미확정(다음 갱신)</span>'
         stn = nearest_stn(r['lat'], r['lng']) if r.get('lat') else '기타'
         present_stn.add(stn)
+        stntag = f' ({stn}역)' if stn != '기타' else ''
+        mgtag = f' · 관리비 {r["manage"]:g}만' if r.get('manage') else ''
         bsmt = str(r.get('floor')) in ('반지하', '옥탑방')   # 비선호 층(반지하·옥탑) — 기본 숨김
         # 초기 화면(전세탭 + 오픈형·반지하 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
         init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸' or bsmt) else ''
@@ -518,9 +520,9 @@ def build_html(rows, report, ts):
  data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
-  <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}</div>
+  <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}{mgtag}</div>
   <div class="commute">{cmline}</div>
-  <div class="addr">{esc(r['addr'])}</div>{rtline}{sparkdiv}</div></a>''')
+  <div class="addr">{esc(r['addr'])}{stntag}</div>{rtline}{sparkdiv}</div></a>''')
     if report.get('baseline'):
         change = '기준점 설정 — 다음 실행부터 신규·빠짐·가격변동 표시'
     else:
