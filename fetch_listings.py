@@ -32,7 +32,9 @@ MIN_M2 = 29.75                            # 전용면적 하한(㎡) = 9평. 둘
 MAX_DIST = 1200                           # 역 최근접 거리 컷(m)
 EXCLUDE_NORTH_LAT = 37.500                # 이 위도 이북(신논현 위쪽) 제외; None이면 미적용
 # 빌라(투룸·쓰리룸 본진) 포함. 아파트는 단지 기반 별구조라 제외
-ENDPOINTS = ['v2/items/oneroom', 'v2/items/officetel', 'v2/items/villa']
+# v2/items/* 는 2026-07-23 직방이 폐기(404) → house/property/v1 로 이전. 응답 키도 itemId→id
+ENDPOINTS = ['house/property/v1/items/onerooms', 'house/property/v1/items/officetels',
+             'house/property/v1/items/villas']
 _HERE = os.path.dirname(os.path.abspath(__file__))
 # 출력 경로: 로컬은 바탕화면, CI는 DASHBOARD_PATH 환경변수
 DASHBOARD = os.environ.get('DASHBOARD_PATH', '/mnt/c/Users/10x100/Desktop/방매물.html')
@@ -169,7 +171,7 @@ def collect_ids():
                 try: d = get(url)
                 except Exception: continue
                 for it in d.get('items', []):
-                    iid = it.get('itemId')
+                    iid = it.get('id', it.get('itemId'))
                     if iid is None or iid in seen: continue
                     seen[iid] = {'lat': it.get('lat'), 'lng': it.get('lng')}
     return seen
@@ -588,6 +590,8 @@ def build_html(rows, report, ts):
 def main():
     os.makedirs(SNAP_DIR, exist_ok=True)
     seen = collect_ids()
+    if not seen:   # 검색 API 붕괴 시 빈 스냅샷을 커밋하면 diff가 통째로 오염됨 → 실패로 중단
+        raise SystemExit('collect_ids() returned 0 items: zigbang search API broken? snapshot not written')
     targets = [iid for iid, v in seen.items()
                if v['lat'] and min(hav(v['lat'], v['lng'], s[0], s[1]) for s in STATIONS.values()) <= MAX_DIST
                and (EXCLUDE_NORTH_LAT is None or v['lat'] < EXCLUDE_NORTH_LAT)]
