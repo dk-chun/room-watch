@@ -162,18 +162,17 @@ def collect_ids():
     for la, lo in STATIONS.values():
         for g in neighbors(gh_encode(la, lo, 6)): ghset.add(g)
     seen = {}
+    # salesTypes 필터는 새 API에서 매물 절반을 흘림(무필터 81 vs 전세∪월세 36 관측)
+    # → 무필터로 긁고 전세/월세 구분은 상세(fetch_detail)의 salesType으로 거름
     for gh in ghset:
         for ep in ENDPOINTS:
-            for st in ('전세', '월세'):
-                url = (f'https://apis.zigbang.com/{ep}?geohash={gh}&depositMin=0&rentMin=0&'
-                       + urllib.parse.urlencode({'salesTypes[0]': st})
-                       + '&domain=zigbang&checkAnyItemWithoutFilter=true')
-                try: d = get(url)
-                except Exception: continue
-                for it in d.get('items', []):
-                    iid = it.get('id', it.get('itemId'))
-                    if iid is None or iid in seen: continue
-                    seen[iid] = {'lat': it.get('lat'), 'lng': it.get('lng')}
+            url = f'https://apis.zigbang.com/{ep}?geohash={gh}&depositMin=0&rentMin=0'
+            try: d = get(url)
+            except Exception: continue
+            for it in d.get('items', []):
+                iid = it.get('id', it.get('itemId'))
+                if iid is None or iid in seen: continue
+                seen[iid] = {'lat': it.get('lat'), 'lng': it.get('lng')}
     return seen
 
 def fetch_detail(iid, retries=3):
@@ -598,6 +597,7 @@ def main():
     rows = []
     with ThreadPoolExecutor(max_workers=20) as ex:
         for r in ex.map(fetch_detail, targets):
+            if r and r['sales'] not in ('전세', '월세'): continue   # 무필터 수집이라 매매 등 유입 차단
             if r and r['m2'] and r['m2'] >= MIN_M2 and r['lat']:
                 if EXCLUDE_NORTH_LAT and r['lat'] >= EXCLUDE_NORTH_LAT: continue
                 cd, cv = commute(r['lat'], r['lng']); r['cd'], r['cv'] = cd, cv
