@@ -47,6 +47,7 @@ def _molit_key():   # CI는 env(Secrets), 로컬은 .molit_key 파일(gitignore)
 MOLIT_KEY = _molit_key()
 RT_MONTHS = 12                            # 실거래 조회 개월수
 RT_CONV = 0.055                           # 전월세 전환율(월세→전세환산)
+BURDEN_RATE = 0.03                        # 실질부담 계산용 보증금 기회비용(연리): 월세+관리비+보증금×3%÷12
 DONG_GU = {'역삼동': '11680', '논현동': '11680', '도곡동': '11680', '개포동': '11680',
            '대치동': '11680', '삼성동': '11680', '청담동': '11680', '신사동': '11680',
            '서초동': '11650', '양재동': '11650', '반포동': '11650', '우면동': '11650',
@@ -378,14 +379,15 @@ body.dark .rt.mid{background:#2c2f36;color:#aaa}
 JS = """
 let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true,bsmtShow=false;   // 기본: 방 분리만 + 반지하 숨김 + 용도 둘 다
 function render(){
- const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value,tc=document.getElementById('tcap').value;
+ const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value,tc=document.getElementById('tcap').value,bc=document.getElementById('bcap').value,yc=document.getElementById('ycap').value,mc=document.getElementById('mcap').value;
  const stnOn={}; document.querySelectorAll('.stnchip').forEach(b=>stnOn[b.dataset.stn]=b.classList.contains('on'));
  const stnCount={};
  let cj=0,cw=0,co=0,ch=0;
  document.querySelectorAll('.card').forEach(c=>{
   const isJ=c.dataset.sales==='전세', isO=c.dataset.svcg==='offi';
   const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸') && !(!bsmtShow&&c.dataset.bsmt==='1');
-  const capOK=(isJ?(!dc||+c.dataset.deposit<=+dc*10000):(!rc||+c.dataset.rent<=+rc)) && (!tc||+c.dataset.commute<=+tc);
+  const capOK=(!dc||+c.dataset.deposit<=+dc*10000) && (isJ||!rc||+c.dataset.rent<=+rc) && (!tc||+c.dataset.commute<=+tc)
+   && (!bc||+c.dataset.burden<=+bc) && (!yc||+c.dataset.yr>=+yc) && (!mc||+c.dataset.m2>=+mc);   // 보증금 상한은 전·월세 공통, 준공미상(yr=0)은 준공필터에서 제외
   const svcOK=isO?showOffi:showHouse;
   const stnOK=stnOn[c.dataset.stn]!==false;
   if(sepOK&&capOK&&svcOK&&stnOK){if(isJ)cj++;else cw++;}                // 탭 숫자
@@ -518,7 +520,7 @@ def build_html(rows, report, ts):
         # 초기 화면(전세탭 + 오픈형·반지하 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
         init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸' or bsmt) else ''
         cards.append(f'''<a class="card {st}{init_hide}" href="{link(r)}" target="_blank" rel="noopener"
- data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}">
+ data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}" data-yr="{yr if yr.isdigit() else 0}" data-burden="{round((r['rent'] or 0) + (r.get('manage') or 0) + (r['deposit'] or 0) * BURDEN_RATE / 12)}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
   <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}{mgtag}</div>
@@ -571,6 +573,7 @@ def build_html(rows, report, ts):
  <button class="sortb" onclick="setSort('rent',this)">월세순</button>
  <button class="sortb" onclick="setSort('m2',this)">면적순</button>
  <button class="sortb" onclick="setSort('rtdiff',this)">실거래저평가순</button>
+ <button class="sortb" onclick="setSort('burden',this)">부담순</button>
  <span class="sep-line"></span>
  <button id="chipOffi" class="on" onclick="toggleSvc(this,'offi')">🏢 오피스텔 {co}</button>
  <button id="chipHouse" class="on" onclick="toggleSvc(this,'house')">🏠 빌라·원룸 {ch}</button>
@@ -581,6 +584,9 @@ def build_html(rows, report, ts):
  보증금<input id="dcap" type="number" placeholder="상한" oninput="render()">억
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
  통근<input id="tcap" type="number" placeholder="상한" oninput="render()">분↓
+ 부담<input id="bcap" type="number" placeholder="상한" oninput="render()" title="월세+관리비+보증금×3%÷12 (만원)">만↓
+ 준공<input id="ycap" type="number" placeholder="하한" oninput="render()">년↑
+ 면적<input id="mcap" type="number" placeholder="하한" oninput="render()">㎡↑
  <button id="darkbtn" class="ml" onclick="toggleDark(this)">🌙 다크</button>
 </div>{region_html}<div class="grid">{''.join(cards)}</div>
 <script>const RT_DATA={rt_json};const GU2STN={gu2stn_json};</script>
