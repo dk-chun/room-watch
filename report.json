@@ -1,37 +1,201 @@
 {
-  "snapshot": "2026-08-30-0855",
+  "snapshot": "2026-08-31-0915",
   "total": 716,
   "total_by_sales": {
     "전세": 111,
     "월세": 605
   },
   "baseline": false,
-  "prev_snapshot": "2026-08-30-0853",
-  "new": [],
-  "removed": [],
-  "price_changed": [
+  "prev_snapshot": "2026-08-30-0855",
+  "new": [
     {
-      "id": 50217591,
+      "id": 50105620,
       "sales": "월세",
-      "deposit": 13000,
-      "rent": 165,
-      "m2": 50.52,
-      "floor": "5/5",
+      "deposit": 500,
+      "rent": 270,
+      "m2": 40.92,
+      "floor": "중/23",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2025",
+      "commute": "18분 강남셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/50105620"
+    },
+    {
+      "id": 50220220,
+      "sales": "월세",
+      "deposit": 5000,
+      "rent": 75,
+      "m2": 39,
+      "floor": "2/3",
+      "svc": "빌라",
+      "addr": "관악구 신림동",
+      "approve": "1998",
+      "commute": "33분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50220220"
+    },
+    {
+      "id": 50219837,
+      "sales": "월세",
+      "deposit": 120,
+      "rent": 85,
+      "m2": 35.4,
+      "floor": "2/4",
+      "svc": "원룸",
+      "addr": "강남구 역삼동",
+      "approve": "2003",
+      "commute": "11분 강남셔틀",
+      "link": "https://www.zigbang.com/home/oneroom/items/50219837"
+    },
+    {
+      "id": 50219780,
+      "sales": "월세",
+      "deposit": 10000,
+      "rent": 60,
+      "m2": 45,
+      "floor": "5/6",
+      "svc": "빌라",
+      "addr": "관악구 신림동",
+      "approve": "1996",
+      "commute": "25분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50219780"
+    },
+    {
+      "id": 50217667,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 110,
+      "m2": 29.75,
+      "floor": "8/34",
+      "svc": "오피스텔",
+      "addr": "성남시 분당구 정자동",
+      "approve": "2015",
+      "commute": "22분 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/50217667"
+    },
+    {
+      "id": 50219669,
+      "sales": "월세",
+      "deposit": 3000,
+      "rent": 90,
+      "m2": 55,
+      "floor": "1/2",
+      "svc": "빌라",
+      "addr": "관악구 신림동",
+      "approve": "1988",
+      "commute": "30분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50219669"
+    }
+  ],
+  "removed": [
+    {
+      "id": 50170030,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 125,
+      "m2": 39.92,
+      "floor": "1/2",
+      "svc": "빌라",
+      "addr": "관악구 신림동",
+      "approve": "1994",
+      "commute": "28분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50170030",
+      "status": "close"
+    },
+    {
+      "id": 50187641,
+      "sales": "월세",
+      "deposit": 150,
+      "rent": 100,
+      "m2": 30.8,
+      "floor": "4/5",
+      "svc": "원룸",
+      "addr": "강남구 역삼동",
+      "approve": "2001",
+      "commute": "14분 강남셔틀",
+      "link": "https://www.zigbang.com/home/oneroom/items/50187641",
+      "status": "close"
+    },
+    {
+      "id": 50208697,
+      "sales": "월세",
+      "deposit": 300,
+      "rent": 250,
+      "m2": 79.34,
+      "floor": "3/4",
       "svc": "빌라",
       "addr": "강남구 역삼동",
-      "approve": "2015",
-      "commute": "16분 양재셔틀",
-      "link": "https://www.zigbang.com/home/villa/items/50217591",
+      "approve": "2005",
+      "commute": "10분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50208697",
+      "status": "close"
+    },
+    {
+      "id": 50100329,
+      "sales": "월세",
+      "deposit": 1000,
+      "rent": 110,
+      "m2": 38.36,
+      "floor": "중/15",
+      "svc": "오피스텔",
+      "addr": "서초구 서초동",
+      "approve": "2006",
+      "commute": "7분 강남셔틀앞 도보",
+      "link": "https://www.zigbang.com/home/officetel/items/50100329",
+      "status": "open"
+    },
+    {
+      "id": 50186909,
+      "sales": "월세",
+      "deposit": 200,
+      "rent": 200,
+      "m2": 51,
+      "floor": "4/5",
+      "svc": "빌라",
+      "addr": "강남구 역삼동",
+      "approve": "2002",
+      "commute": "14분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50186909",
+      "status": "close"
+    },
+    {
+      "id": 50216392,
+      "sales": "월세",
+      "deposit": 200,
+      "rent": 150,
+      "m2": 38.2,
+      "floor": "12/34",
+      "svc": "오피스텔",
+      "addr": "성남시 분당구 정자동",
+      "approve": "2004",
+      "commute": "17분 양재숲셔틀",
+      "link": "https://www.zigbang.com/home/officetel/items/50216392",
+      "status": "cancel"
+    }
+  ],
+  "price_changed": [
+    {
+      "id": 50217685,
+      "sales": "전세",
+      "deposit": 29000,
+      "rent": 0,
+      "m2": 29.86,
+      "floor": "3/5",
+      "svc": "빌라",
+      "addr": "동작구 사당동",
+      "approve": "2021",
+      "commute": "23분 강남셔틀",
+      "link": "https://www.zigbang.com/home/villa/items/50217685",
       "before": {
-        "deposit": 10000,
-        "rent": 185
+        "deposit": 30000,
+        "rent": 0
       },
       "after": {
-        "deposit": 13000,
-        "rent": 165
+        "deposit": 29000,
+        "rent": 0
       }
     }
   ],
-  "unchanged": 715,
+  "unchanged": 709,
   "dashboard": "public/index.html"
 }
