@@ -4,7 +4,7 @@
 - stdout: diff 리포트(JSON)
 - snapshots/<ts>.json 저장(비교 기준, 지우지 말 것)
 """
-import urllib.request, urllib.parse, json, math, os, glob, statistics, time
+import urllib.request, urllib.parse, json, math, os, glob, statistics, time, gzip
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
@@ -331,6 +331,49 @@ def attach_realprice(rows):
 def fingerprint(r):   # 가격 제외한 매물 정체성 (재등록으로 itemId 바뀌어도 동일)
     return (round(r['m2'], 1), r.get('floor'), r.get('floors'), r['svc'], r['addr'], (r.get('approve') or '')[:4])
 
+MIN_VALID = 600   # 이보다 작은 스냅샷은 부분 수집(7/23·8/1)이라 이력 계산에서 제외 — 가짜 재등록을 만들기 때문
+
+def _load_snap(path):
+    op = gzip.open if path.endswith('.gz') else open
+    with op(path, 'rt', encoding='utf-8') as f:
+        d = json.load(f)
+    return d['items'] if isinstance(d, dict) else d
+
+def attach_history(rows, today, snap_dir=None):
+    """각 매물에 체류 이력 부착: days(이 광고의 체류일) · rereg(지문 승계 재등록 횟수) · first(체인 첫 등장일) · lc(좌측절단).
+    지문은 호실을 유일하게 특정하지 못하므로 이틀 이상 동시에 살아 있었던 선행 매물은 잇지 않고, 선행 하나는 후속 하나에만 배정.
+    같은 id 는 가격이 바뀌지 않고 인하는 재등록으로만 일어나므로, 재등록 횟수가 곧 '몇 번 내렸다 다시 올렸나'."""
+    snap_dir = snap_dir or SNAP_DIR
+    first, last, fp, dates = {}, {}, {}, set()
+    for path in sorted(glob.glob(snap_dir + '/*.json') + glob.glob(snap_dir + '/*.json.gz')):
+        day = os.path.basename(path)[:10]
+        try: items = _load_snap(path)
+        except Exception: continue
+        if len(items) < MIN_VALID: continue
+        dates.add(day)
+        for r in items:
+            i = r['id']
+            first.setdefault(i, day); last[i] = day; fp[i] = fingerprint(r)
+    for r in rows:   # 오늘 수집분은 아직 스냅샷 파일에 없음
+        i = r['id']
+        first.setdefault(i, today); last[i] = today; fp[i] = fingerprint(r)
+    dates.add(today)
+    by_fp = defaultdict(list)
+    for i in first: by_fp[fp[i]].append(i)
+    pred, claimed = {}, set()
+    for i in sorted(first, key=lambda k: (first[k], k)):   # 등장 순으로 선행자 배정 (날짜 문자열은 사전순 = 시간순)
+        # 하루 겹침(last==first)까지 선행으로 인정: 새 광고 올린 뒤 옛 광고 내리는 사이 스냅샷이 한 번 지나간 경우(연속 지문쌍의 4.5%)
+        # 선행자는 반드시 먼저 등장했어야 함(first 엄격 감소) — 같은 날 뜨고 진 둘이 서로를 잡아 순환하는 것 방지
+        cands = [j for j in by_fp[fp[i]] if j != i and j not in claimed and first[j] < first[i] and last[j] <= first[i]]
+        if cands:
+            j = max(cands, key=lambda k: last[k]); pred[i] = j; claimed.add(j)
+    d0 = min(dates)
+    def _days(a, b): return (datetime.strptime(b, '%Y-%m-%d') - datetime.strptime(a, '%Y-%m-%d')).days
+    for r in rows:
+        i = head = r['id']; n = 0; seen = {i}
+        while head in pred and pred[head] not in seen: head = pred[head]; seen.add(head); n += 1
+        r['days'] = _days(first[i], today); r['rereg'] = n; r['first'] = first[head]; r['lc'] = first[head] == d0
+
 def brief(r):
     cd, cv = (r.get('cd'), r.get('cv'))
     tm = f"{r.get('tmin')}분 {r.get('tmode')}" if r.get('tmin') is not None else (f"{cd}m {cv}" if cd else None)
@@ -359,6 +402,18 @@ h1{margin:0 0 6px;font-size:18px}.sum{font-size:13px;color:var(--muted)}.sum b{c
 .price{font-size:16px;font-weight:700}.meta{font-size:12px;color:var(--muted);margin-top:3px}
 .commute{font-size:12px;color:var(--accent);margin-top:4px;font-weight:600}.commute .dim{color:var(--sub);font-weight:400}.addr{font-size:12px;color:var(--sub);margin-top:3px}
 .ml{margin-left:auto}.hidden{display:none}
+.stay{font-size:11px;color:var(--sub);margin-top:3px}
+#bldg{padding:14px 20px;overflow-x:auto}.bcap{font-size:12px;color:var(--sub);margin-bottom:8px}
+.bt{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px}
+.bt th,.bt td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.bt th{cursor:pointer;color:var(--muted);font-weight:600;font-size:12px;user-select:none}.bt th.on{color:var(--accent)}
+.bt th:first-child,.bt td:first-child{text-align:left}.br{cursor:pointer}.br:hover{background:var(--bg)}.br td:first-child{font-weight:700}
+.br .n{color:var(--sub);font-weight:400;font-size:12px}
+.bd>td{padding:0;background:var(--bg)}.ut{width:100%;border-collapse:collapse;font-size:12.5px}
+.ut td{padding:5px 10px 5px 24px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.ut td:first-child{text-align:left}.ut a{color:var(--accent);text-decoration:none}.ut .kw{color:var(--muted);font-size:11.5px}
+.ut .thumb{width:40px;height:30px;border-radius:4px;background:var(--imgbg) center/cover no-repeat;display:inline-block;vertical-align:middle;margin-right:6px}
+.bt .lo{color:var(--down);font-weight:700}.bt .hi{color:var(--up)}
 .sep-line{display:inline-block;width:1px;height:20px;background:var(--border);margin:0 3px}
 .regions{padding:7px 20px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--card);border-bottom:1px solid var(--border);font-size:12px;position:sticky;z-index:8}
 .regions{top:105px}.regions.stns{top:146px}
@@ -378,6 +433,57 @@ body.dark .rt.mid{background:#2c2f36;color:#aaa}
 """
 JS = """
 let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true,bsmtShow=false;   // 기본: 방 분리만 + 반지하 숨김 + 용도 둘 다
+let view='cards',bSort='lo',bAsc=true,bOpen={};
+const BLDG_MIN=3;   // 같은 필지(pnu)에 이 건수 이상일 때만 건물 표에 올림 (현재 필터 통과분 기준)
+function setView(v,e){view=v;document.querySelectorAll('.viewb').forEach(b=>b.classList.remove('on'));e.classList.add('on');
+ document.querySelector('.grid').classList.toggle('hidden',v!=='cards');document.getElementById('bldg').classList.toggle('hidden',v!=='bldg');render()}
+function med(a){const s=a.slice().sort((x,y)=>x-y),n=s.length;return n?(n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2):0}
+function bSortBy(k){if(bSort===k)bAsc=!bAsc;else{bSort=k;bAsc=(k==='name'||k==='lo'||k==='md'||k==='per'||k==='cd'||k==='tmin'||k==='rt'||k==='days')}renderBldg()}
+function bToggle(p){bOpen[p]=!bOpen[p];renderBldg()}
+function renderBldg(){
+ const box=document.getElementById('bldg'); if(view!=='bldg')return;
+ const J=sales==='전세';
+ const v=c=>J?+c.dataset.deposit/10000:+c.dataset.burden;                 // 전세=보증금(억) / 월세=실질부담(만)
+ const fm=x=>J?x.toFixed(2).replace(/\\.?0+$/,'')+'억':Math.round(x)+'만';
+ const fper=x=>J?Math.round(x*10000)+'만':x.toFixed(1)+'만';               // ㎡당
+ const g={};
+ document.querySelectorAll('.card:not(.hidden)').forEach(c=>{const p=c.dataset.pnu||('id'+c.dataset.id);(g[p]=g[p]||[]).push(c)});
+ const rows=[];
+ for(const p in g){const cs=g[p]; if(cs.length<BLDG_MIN)continue;
+  const vals=cs.map(v),m2s=cs.map(c=>+c.dataset.m2),ds=cs.map(c=>+c.dataset.days).filter(x=>x>=0);
+  const bt=cs.filter(c=>c.dataset.rttier==='building').map(c=>+c.dataset.rtdiff);
+  const c0=cs[0];
+  rows.push({p,cs,n:cs.length,lo:Math.min(...vals),md:med(vals),per:med(cs.map(c=>v(c)/+c.dataset.m2)),
+   m2lo:Math.min(...m2s),m2hi:Math.max(...m2s),yr:+c0.dataset.yr||0,cv:c0.dataset.cv,cd:+c0.dataset.cd,
+   tmin:Math.min(...cs.map(c=>+c.dataset.commute)),rt:bt.length?med(bt):null,days:ds.length?med(ds):-1,
+   rereg:cs.reduce((a,c)=>a+(+c.dataset.rereg),0),nnew:cs.filter(c=>c.classList.contains('new')).length,
+   name:c0.dataset.bldg||(c0.dataset.addr+' '+(+c0.dataset.yr?c0.dataset.yr:'?')+'년 '+c0.dataset.floors+'층')});
+ }
+ const key={name:r=>r.name,n:r=>r.n,lo:r=>r.lo,md:r=>r.md,per:r=>r.per,m2:r=>r.m2lo,yr:r=>r.yr,cd:r=>r.cd,tmin:r=>r.tmin,rt:r=>r.rt===null?9999:r.rt,days:r=>r.days,rereg:r=>r.rereg}[bSort];
+ rows.sort((a,b)=>{const x=key(a),y=key(b);const c=typeof x==='string'?x.localeCompare(y):x-y;return bAsc?c:-c});
+ const th=(k,t)=>'<th class="'+(bSort===k?'on':'')+'" onclick="bSortBy(\\''+k+'\\')">'+t+(bSort===k?(bAsc?' ↑':' ↓'):'')+'</th>';
+ const cap=J?'보증금':'부담';
+ let h='<div class="bcap">같은 필지(pnu)에 <b>'+BLDG_MIN+'건 이상</b>인 건물만 · 현재 탭·필터 적용 · '+(J?'값은 보증금(억)':'부담 = 월세+관리비+보증금×3%÷12')+' · 실거래 대비는 같은 건물 실거래 있을 때만 · 행 클릭 → 호실</div>';
+ h+='<table class="bt"><thead><tr>'+th('name','건물')+th('n','건수')+th('lo',cap+' 최저')+th('md','중앙')+th('per','㎡당 중앙')+th('m2','면적')+th('yr','준공')+th('cd','셔틀')+th('tmin','통근')+th('rt','실거래 대비')+th('days','체류 중앙')+th('rereg','재등록')+'</tr></thead><tbody>';
+ if(!rows.length)h+='<tr><td colspan="12" style="text-align:center;color:var(--sub)">현재 필터에서 '+BLDG_MIN+'건 이상 건물 없음</td></tr>';
+ for(const r of rows){
+  const rtc=r.rt===null?'—':'<span class="'+(r.rt>8?'hi':(r.rt<-8?'lo':''))+'">'+(r.rt>0?'+':'')+r.rt+'%</span>';
+  h+='<tr class="br" onclick="bToggle(\\''+r.p+'\\')"><td>'+(bOpen[r.p]?'▾ ':'▸ ')+r.name+(r.nnew?' <span class="n">🆕'+r.nnew+'</span>':'')+'</td><td>'+r.n+'</td><td>'+fm(r.lo)+'</td><td>'+fm(r.md)+'</td><td>'+fper(r.per)+'</td><td>'+r.m2lo+'~'+r.m2hi+'㎡</td><td>'+(r.yr||'?')+'</td><td>'+(r.cd<99999?r.cv+' '+r.cd+'m':'—')+'</td><td>'+(r.tmin<999?r.tmin+'분':'—')+'</td><td>'+rtc+'</td><td>'+(r.days>=0?r.days+'일':'—')+'</td><td>'+(r.rereg?'♻️'+r.rereg:'—')+'</td></tr>';
+  if(bOpen[r.p]){
+   h+='<tr class="bd"><td colspan="12"><table class="ut">';
+   for(const c of r.cs.slice().sort((a,b)=>v(a)-v(b))){
+    const d=c.dataset, mg=+d.manage?'+관'+d.manage:'';
+    const price=J?fm(+d.deposit/10000):'보'+(+d.deposit>=10000?(+d.deposit/10000).toFixed(2).replace(/\\.?0+$/,'')+'억':d.deposit+'만')+'/'+d.rent+mg;
+    const lc=d.lc==='1', rr=+d.rereg;
+    const stay=(+d.days>=0?'⏱'+(lc&&!rr?'≥':'')+d.days+'일':'')+(rr?' ♻️'+rr+'회('+(lc?'≥':'')+d.first.slice(5).replace('-','/')+'~)':'');
+    h+='<tr><td>'+(d.img?'<span class="thumb" style="background-image:url(\\''+d.img+'?w=80&h=60&q=60\\')"></span>':'')+(c.classList.contains('new')?'🆕 ':'')+'<a href="'+c.href+'" target="_blank" rel="noopener">'+d.m2+'㎡ · '+d.floor+'/'+d.floors+'층 · '+d.room+'</a></td>'
+      +'<td><b>'+fm(v(c))+'</b></td><td>'+fper(v(c)/+d.m2)+'/㎡</td><td>'+price+'</td><td class="kw">'+(d.kw||'').split(',').filter(Boolean).join(' · ')+'</td><td>'+stay+'</td></tr>';
+   }
+   h+='</table></td></tr>';
+  }
+ }
+ box.innerHTML=h+'</tbody></table>';
+}
 function render(){
  const dc=document.getElementById('dcap').value,rc=document.getElementById('rcap').value,tc=document.getElementById('tcap').value,bc=document.getElementById('bcap').value,yc=document.getElementById('ycap').value,mc=document.getElementById('mcap').value;
  const stnOn={}; document.querySelectorAll('.stnchip').forEach(b=>stnOn[b.dataset.stn]=b.classList.contains('on'));
@@ -411,6 +517,7 @@ function render(){
  const g=document.querySelector('.grid');
  [...g.children].filter(c=>!c.classList.contains('hidden'))
   .sort((a,b)=>sortKey==='m2'?(+b.dataset.m2)-(+a.dataset.m2):(+a.dataset[sortKey])-(+b.dataset[sortKey])).forEach(c=>g.appendChild(c));
+ renderBldg();
 }
 function setSales(s,e){sales=s;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
 function setSort(k,e){sortKey=k;document.querySelectorAll('.sortb').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
@@ -467,6 +574,8 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 """
 
+# 건물 내 비교용 제목 키워드 — 같은 건물 호가 편차의 설명변수(리모델링·옵션·단기·용도)
+KEYWORDS = ['리모델링', '올수리', '풀옵션', '첫입주', '단기', '근생', '전입불가', '복층', '테라스']
 # 지역 필터: 최근접 역 → 그 역이 속한 구로 묶음(계층형). 역단위 다중토글, 구는 마스터.
 GU_GROUPS = [('강남구', ['강남', '도곡', '매봉', '신논현']),
              ('서초구', ['양재', '양재숲', '서초', '교대', '남부터미널', '방배']),
@@ -507,6 +616,15 @@ def build_html(rows, report, ts):
                 pos = f'하위 {pct}% (싼 편)' if pct <= 50 else f'상위 {100 - pct}% (비싼 편)'
                 rtline = f'<div class="rt {cls}">📊 동네 {r["m2"]:.0f}㎡ 실거래 {pos} ({rt["n"]}건) ·참고</div>'
         sparkdiv = f'<div class="spark" data-id="{r["id"]}"></div>' if (rt and rt.get('hist')) else ''
+        rttier = (rt or {}).get('tier') or ''
+        bldg = (rt or {}).get('bldg') or ''
+        kw = ','.join(k for k in KEYWORDS if k in (r.get('title') or ''))
+        # 체류 배지: 이 광고의 체류일 + 지문 승계 재등록 횟수(있으면 체인 첫 등장일). 좌측절단은 ≥
+        days = r.get('days'); stay = ''
+        if days is not None:
+            lc = '≥' if r.get('lc') else ''   # 좌측절단: 재등록 없으면 광고 체류일에, 있으면 체인 시작일에 붙임
+            rr = f" · ♻️ 재등록 {r['rereg']}회 ({lc}{r['first'][5:].replace('-', '/')}~)" if r.get('rereg') else ''
+            stay = f'<div class="stay">⏱ 체류 {lc if not r.get('rereg') else ''}{days}일{rr}</div>'
         if r.get('tmin') is not None:
             dist = f' <span class="dim">({r.get("tdist")}m)</span>' if r.get('ttype') == 'walk' else ''
             cmline = f'🚆 약 {r.get("tmin")}분 · {esc(r.get("tmode"))}{dist}'
@@ -520,12 +638,13 @@ def build_html(rows, report, ts):
         # 초기 화면(전세탭 + 오픈형·반지하 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
         init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸' or bsmt) else ''
         cards.append(f'''<a class="card {st}{init_hide}" href="{link(r)}" target="_blank" rel="noopener"
- data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}" data-yr="{yr if yr.isdigit() else 0}" data-burden="{round((r['rent'] or 0) + (r.get('manage') or 0) + (r['deposit'] or 0) * BURDEN_RATE / 12)}">
+ data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}" data-yr="{yr if yr.isdigit() else 0}" data-burden="{round((r['rent'] or 0) + (r.get('manage') or 0) + (r['deposit'] or 0) * BURDEN_RATE / 12)}"
+ data-pnu="{esc(r.get('pnu'))}" data-bldg="{esc(bldg)}" data-addr="{esc(r['addr'])}" data-cd="{r.get('cd') or 99999}" data-cv="{esc(r.get('cv'))}" data-floor="{esc(r.get('floor'))}" data-floors="{esc(r.get('floors'))}" data-manage="{r.get('manage') or 0}" data-rttier="{rttier}" data-kw="{kw}" data-days="{days if days is not None else -1}" data-rereg="{r.get('rereg', 0)}" data-first="{r.get('first', '')}" data-lc="{1 if r.get('lc') else 0}" data-img="{r.get('img') or ''}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
   <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}{mgtag}</div>
   <div class="commute">{cmline}</div>
-  <div class="addr">{esc(r['addr'])}{stntag}</div>{rtline}{sparkdiv}</div></a>''')
+  <div class="addr">{esc(r['addr'])}{stntag}</div>{stay}{rtline}{sparkdiv}</div></a>''')
     if report.get('baseline'):
         change = '기준점 설정 — 다음 실행부터 신규·빠짐·가격변동 표시'
     else:
@@ -567,6 +686,9 @@ def build_html(rows, report, ts):
 <div class="controls">
  <button class="tab on" onclick="setSales('전세',this)">전세 {vj}</button>
  <button class="tab" onclick="setSales('월세',this)">월세 {vw}</button>
+ <span class="sep-line"></span>
+ <button class="viewb on" onclick="setView('cards',this)">🃏 카드</button>
+ <button class="viewb" onclick="setView('bldg',this)" title="같은 건물 3건 이상만 · 행 클릭하면 호실 비교">🏢 건물</button>
  <span style="width:10px"></span>
  <button class="sortb on" onclick="setSort('commute',this)">통근순</button>
  <button class="sortb" onclick="setSort('deposit',this)">보증금순</button>
@@ -588,7 +710,7 @@ def build_html(rows, report, ts):
  준공<input id="ycap" type="number" placeholder="하한" oninput="render()">년↑
  면적<input id="mcap" type="number" placeholder="하한" oninput="render()">㎡↑
  <button id="darkbtn" class="ml" onclick="toggleDark(this)">🌙 다크</button>
-</div>{region_html}<div class="grid">{''.join(cards)}</div>
+</div>{region_html}<div class="grid">{''.join(cards)}</div><div id="bldg" class="hidden"></div>
 <script>const RT_DATA={rt_json};const GU2STN={gu2stn_json};</script>
 <script>{JS}</script></body></html>'''
 
@@ -617,8 +739,12 @@ def main():
 
     prev_files = sorted(glob.glob(SNAP_DIR + '/*.json'))
     ts = datetime.now(KST).strftime('%Y-%m-%d-%H%M')
+    try: attach_history(rows, ts[:10])   # 체류일·재등록 이력 (전체 스냅샷 기준, 오늘분 포함)
+    except Exception as e: history_error = repr(e)   # 이력은 부가정보 — 실패해도 스냅샷·diff 는 살려야 함
+    else: history_error = None
     report = {'snapshot': ts, 'total': len(cur),
               'total_by_sales': {s: sum(1 for r in rows if r['sales'] == s) for s in ('전세', '월세')}}
+    if history_error: report['history_error'] = history_error
 
     if not prev_files:
         report['baseline'] = True
