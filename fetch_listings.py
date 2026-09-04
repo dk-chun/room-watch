@@ -516,7 +516,10 @@ function render(){
  document.getElementById('chipHouse').textContent='🏠 빌라·원룸 '+ch;
  const g=document.querySelector('.grid');
  [...g.children].filter(c=>!c.classList.contains('hidden'))
-  .sort((a,b)=>sortKey==='m2'?(+b.dataset.m2)-(+a.dataset.m2):(+a.dataset[sortKey])-(+b.dataset[sortKey])).forEach(c=>g.appendChild(c));
+  .sort((a,b)=>{                                                       // 1차=선택 정렬키, 2차=통근분(동점 다수라 명시 필요)
+   const p=sortKey==='m2'?(+b.dataset.m2)-(+a.dataset.m2):(+a.dataset[sortKey])-(+b.dataset[sortKey]);
+   return p||(+a.dataset.commute)-(+b.dataset.commute);
+  }).forEach(c=>g.appendChild(c));
  renderBldg();
 }
 function setSales(s,e){sales=s;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
@@ -582,6 +585,9 @@ GU_GROUPS = [('강남구', ['강남', '도곡', '매봉', '신논현']),
              ('관악구', ['서울대입구', '신림']),
              ('동작구', ['사당']),
              ('경기', ['정자', '판교', '수지구청', '광교중앙'])]
+# 수집은 계속하되 대시보드 기본 표시에서만 빼는 역. 칩을 누르면 언제든 켜짐.
+# 신분당선 남쪽(정자·판교·수지구청·광교중앙): 통근은 짧지만 남북 단일축이라 서울 생활권 접근이 불편해 제외.
+DEFAULT_OFF_STN = {'정자', '판교', '수지구청', '광교중앙'}
 def nearest_stn(lat, lng):
     return min(STATIONS, key=lambda k: hav(lat, lng, STATIONS[k][0], STATIONS[k][1]))
 
@@ -671,9 +677,11 @@ def build_html(rows, report, ts):
         ss = [s for s in stns if s in present_stn]
         if not ss: continue
         gu2stn[gu] = ss
-        gu_row.append(f'<button class="guchip on" data-gu="{gu}" onclick="toggleGu(\'{gu}\',this)">{gu} <span></span></button>')
+        gu_on = ' on' if any(x not in DEFAULT_OFF_STN for x in ss) else ''
+        gu_row.append(f'<button class="guchip{gu_on}" data-gu="{gu}" onclick="toggleGu(\'{gu}\',this)">{gu} <span></span></button>')
         for s in ss:
-            stn_row.append(f'<button class="stnchip on" data-stn="{s}" data-gu="{gu}" onclick="toggleStn(\'{s}\',this)">{s} <span></span></button>')
+            son = '' if s in DEFAULT_OFF_STN else ' on'
+            stn_row.append(f'<button class="stnchip{son}" data-stn="{s}" data-gu="{gu}" onclick="toggleStn(\'{s}\',this)">{s} <span></span></button>')
         stn_row.append('<span class="stn-sep"></span>')
     region_html = (f'<div class="regions"><span class="rlabel">지역</span>{"".join(gu_row)}</div>'
                    f'<div class="regions stns">{"".join(stn_row)}</div>') if gu2stn else ''
