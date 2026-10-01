@@ -4,7 +4,7 @@
 - stdout: diff 리포트(JSON)
 - snapshots/<ts>.json 저장(비교 기준, 지우지 말 것)
 """
-import urllib.request, urllib.parse, json, math, os, glob, statistics, time, gzip
+import urllib.request, urllib.parse, json, math, os, glob, statistics, time, gzip, re
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
@@ -432,7 +432,7 @@ body.dark .rt.mid{background:#2c2f36;color:#aaa}
 .sparktip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap;transform:translate(-50%,-135%);opacity:0;transition:opacity .08s;z-index:5;box-shadow:0 3px 12px var(--shadow)}
 """
 JS = """
-let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true,bsmtShow=false;   // 기본: 방 분리만 + 반지하 숨김 + 용도 둘 다
+let sales='전세',sortKey='commute',sepOnly=true,showOffi=true,showHouse=true,bsmtShow=false,dupShow=false;   // 기본: 방 분리만 + 반지하·복층 숨김 + 용도 둘 다
 let view='cards',bSort='lo',bAsc=true,bOpen={};
 const BLDG_MIN=3;   // 같은 필지(pnu)에 이 건수 이상일 때만 건물 표에 올림 (현재 필터 통과분 기준)
 function setView(v,e){view=v;document.querySelectorAll('.viewb').forEach(b=>b.classList.remove('on'));e.classList.add('on');
@@ -491,7 +491,7 @@ function render(){
  let cj=0,cw=0,co=0,ch=0;
  document.querySelectorAll('.card').forEach(c=>{
   const isJ=c.dataset.sales==='전세', isO=c.dataset.svcg==='offi';
-  const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸') && !(!bsmtShow&&c.dataset.bsmt==='1');
+  const sepOK=!(sepOnly&&c.dataset.room==='오픈형원룸') && !(!bsmtShow&&c.dataset.bsmt==='1') && !(!dupShow&&c.dataset.dup==='1');
   const capOK=(!dc||+c.dataset.deposit<=+dc*10000) && (isJ||!rc||+c.dataset.rent<=+rc) && (!tc||+c.dataset.commute<=+tc)
    && (!bc||+c.dataset.burden<=+bc) && (!yc||+c.dataset.yr>=+yc) && (!mc||+c.dataset.m2>=+mc);   // 보증금 상한은 전·월세 공통, 준공미상(yr=0)은 준공필터에서 제외
   const svcOK=isO?showOffi:showHouse;
@@ -526,6 +526,7 @@ function setSales(s,e){sales=s;document.querySelectorAll('.tab').forEach(t=>t.cl
 function setSort(k,e){sortKey=k;document.querySelectorAll('.sortb').forEach(t=>t.classList.remove('on'));e.classList.add('on');render()}
 function toggleSep(e){sepOnly=!sepOnly;e.classList.toggle('on',!sepOnly);render()}   // 버튼 ON = 오픈형 포함 중
 function toggleBsmt(e){bsmtShow=!bsmtShow;e.classList.toggle('on',bsmtShow);render()}  // 버튼 ON = 반지하·옥탑 포함 중
+function toggleDup(e){dupShow=!dupShow;e.classList.toggle('on',dupShow);render()}  // 버튼 ON = 복층 포함 중
 function toggleSvc(e,w){   // 마지막 하나는 못 끔(둘 다 끄면 빈 화면)
  if(w==='offi'){ if(showOffi&&!showHouse)return; showOffi=!showOffi; e.classList.toggle('on',showOffi); }
  else { if(showHouse&&!showOffi)return; showHouse=!showHouse; e.classList.toggle('on',showHouse); }
@@ -585,6 +586,13 @@ GU_GROUPS = [('강남구', ['강남', '도곡', '매봉', '신논현']),
              ('관악구', ['서울대입구', '신림']),
              ('동작구', ['사당']),
              ('경기', ['정자', '판교', '수지구청', '광교중앙'])]
+# 복층: 직방 roomType '복층형원룸' + 제목 '복층'(단 '복층X/아님/없음' 부정 표기는 제외).
+# 건물 단위로 거르지 않음 — 대형 오피스텔은 일부 타입만 복층이라 정상 매물까지 지워짐(2026-10-01 실측 +45건)
+_DUP_NEG = re.compile(r'복층\s*(?:x|X|아님|아닌|없)')
+def is_duplex(r):
+    t = r.get('title') or ''
+    return r.get('room') == '복층형원룸' or ('복층' in t and not _DUP_NEG.search(t))
+
 # 수집은 계속하되 대시보드 기본 표시에서만 빼는 역. 칩을 누르면 언제든 켜짐.
 # 신분당선 남쪽(정자·판교·수지구청·광교중앙): 통근은 짧지만 남북 단일축이라 서울 생활권 접근이 불편해 제외.
 DEFAULT_OFF_STN = {'정자', '판교', '수지구청', '광교중앙'}
@@ -642,9 +650,10 @@ def build_html(rows, report, ts):
         mgtag = f' · 관리비 {r["manage"]:g}만' if r.get('manage') else ''
         bsmt = str(r.get('floor')) in ('반지하', '옥탑방')   # 비선호 층(반지하·옥탑) — 기본 숨김
         # 초기 화면(전세탭 + 오픈형·반지하 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
-        init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸' or bsmt) else ''
+        dup = is_duplex(r)   # 복층(직방 roomType 또는 제목) — 기본 숨김
+        init_hide = ' hidden' if (r['sales'] != '전세' or r.get('room') == '오픈형원룸' or bsmt or dup) else ''
         cards.append(f'''<a class="card {st}{init_hide}" href="{link(r)}" target="_blank" rel="noopener"
- data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}" data-yr="{yr if yr.isdigit() else 0}" data-burden="{round((r['rent'] or 0) + (r.get('manage') or 0) + (r['deposit'] or 0) * BURDEN_RATE / 12)}"
+ data-id="{r['id']}" data-sales="{r['sales']}" data-commute="{r.get('tmin') if r.get('tmin') is not None else 999}" data-deposit="{r['deposit'] or 0}" data-rent="{r['rent'] or 0}" data-m2="{r['m2']}" data-room="{esc(r.get('room'))}" data-rtdiff="{rtdiff}" data-svcg="{'offi' if r['svc'] == '오피스텔' else 'house'}" data-stn="{stn}" data-bsmt="{1 if bsmt else 0}" data-dup="{1 if dup else 0}" data-yr="{yr if yr.isdigit() else 0}" data-burden="{round((r['rent'] or 0) + (r.get('manage') or 0) + (r['deposit'] or 0) * BURDEN_RATE / 12)}"
  data-pnu="{esc(r.get('pnu'))}" data-bldg="{esc(bldg)}" data-addr="{esc(r['addr'])}" data-cd="{r.get('cd') or 99999}" data-cv="{esc(r.get('cv'))}" data-floor="{esc(r.get('floor'))}" data-floors="{esc(r.get('floors'))}" data-manage="{r.get('manage') or 0}" data-rttier="{rttier}" data-kw="{kw}" data-days="{days if days is not None else -1}" data-rereg="{r.get('rereg', 0)}" data-first="{r.get('first', '')}" data-lc="{1 if r.get('lc') else 0}" data-img="{r.get('img') or ''}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
@@ -658,7 +667,7 @@ def build_html(rows, report, ts):
                   f"💰 가격변동 {len(report['price_changed'])} (직전 {report['prev_snapshot']} 대비)")
     tj, tw = report['total_by_sales']['전세'], report['total_by_sales']['월세']
     # 탭 초기 숫자 = 기본 필터(오픈형·반지하 제외) 반영 → JS 돌기 전에도 숫자가 맞음
-    def _std(r): return r.get('room') != '오픈형원룸' and str(r.get('floor')) not in ('반지하', '옥탑방')
+    def _std(r): return r.get('room') != '오픈형원룸' and str(r.get('floor')) not in ('반지하', '옥탑방') and not is_duplex(r)
     vj = sum(1 for r in rows if r['sales'] == '전세' and _std(r))
     vw = sum(1 for r in rows if r['sales'] == '월세' and _std(r))
     # 용도 칩 초기 숫자 (기본 화면 = 전세탭 + 오픈형·반지하 제외)
@@ -710,6 +719,7 @@ def build_html(rows, report, ts):
  <span class="sep-line"></span>
  <button onclick="toggleSep(this)">🏠 오픈형 원룸 포함</button>
  <button onclick="toggleBsmt(this)">🕳 반지하·옥탑 포함</button>
+ <button onclick="toggleDup(this)">🪜 복층 포함</button>
  <span style="width:10px"></span>
  보증금<input id="dcap" type="number" placeholder="상한" oninput="render()">억
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
