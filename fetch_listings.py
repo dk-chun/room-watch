@@ -331,6 +331,7 @@ def fingerprint(r):   # 가격 제외한 매물 정체성 (재등록으로 itemI
     return (round(r['m2'], 1), r.get('floor'), r.get('floors'), r['svc'], r['addr'], (r.get('approve') or '')[:4])
 
 MIN_VALID = 600   # 이보다 작은 스냅샷은 부분 수집(7/23·8/1)이라 이력 계산에서 제외 — 가짜 재등록을 만들기 때문
+SHRINK_DAY, MIN_VALID_SHRUNK = '2026-10-05', 300   # 10/5 수집 역 축소 후 정상 총량 ~430 — 600 그대로면 이후 스냅샷이 전부 빠짐
 
 def _load_snap(path):
     op = gzip.open if path.endswith('.gz') else open
@@ -348,7 +349,7 @@ def attach_history(rows, today, snap_dir=None):
         day = os.path.basename(path)[:10]
         try: items = _load_snap(path)
         except Exception: continue
-        if len(items) < MIN_VALID: continue
+        if len(items) < (MIN_VALID_SHRUNK if day >= SHRINK_DAY else MIN_VALID): continue
         dates.add(day)
         for r in items:
             i = r['id']
