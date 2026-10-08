@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .odsay_key
 odsay_cache/
+.venv/
+.coverage
+htmlcov/
+.pytest_cache/

@@ -1,0 +1,22 @@
+[project]
+name = "room-watch"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = []   # 수집 스크립트는 표준 라이브러리만 씀(CI 는 설치 단계 없음)
+
+[dependency-groups]
+dev = ["pytest", "pytest-cov"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["fetch_listings"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
