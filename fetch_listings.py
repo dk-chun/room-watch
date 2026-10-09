@@ -175,6 +175,15 @@ def collect_ids():
                 seen[iid] = {'lat': it.get('lat'), 'lng': it.get('lng')}
     return seen
 
+# 설명·제목에서 뽑는 법적 신호 — 중개사가 안 적으면 못 잡으므로 '없음 = 안전'이 아님(표시 전용, 거르지 않음)
+NO_JEONIP = re.compile(r'전입\s*(신고)?\s*[은는이가도를]?\s*(불가|안\s*[됨됩되돼]|[Xx✕×]|\(\s*[Xx]\s*\)|가능하지\s*않|하지\s*않는\s*조건)'
+                       r'|전입.{0,4}어렵(?!지\s*않)')
+# 업무용 계약 신호 — '업무용'은 홍보문구("오피스텔은 업무용이다보니", "업무용 부동산", "주거/업무용 모두")만 빼고, '사업자'는 계약 조건 표현만.
+# 부가세는 '별도/추가'만, 금액 바로 뒤(주차비 "월8만원 부가세별도")는 제외. 임대사업자는 등록임대(좋은 신호)라 제외.
+BIZ = re.compile(r'(?<!원)(?<!원\s)부가세\s*(?:10\s*%\s*)?(?:[는은]\s*)?(별도|추가)(?!\s*(없|아님))'   # \s* 연속 금지(역추적 폭발)
+                 r'|(?<!임대)사업자\s*(등록[이을]?\s*)?(계약(?!\s*(시|도|가능))|월세|호실|필요(?!\s*없)|전용|용(?!\s*물건))'
+                 r'|숙소\s*(사용)?\s*불가|사무용(?!\s*(집기|가구))|업무용(?!\s*(이|부동산|모두|계약\s*(모두|도|가능)|/|·|겸))')
+
 def fetch_detail(iid, retries=3):
     for attempt in range(retries):   # 간헐 네트워크 실패 시 재시도(누락 → 가짜 신규/빠짐 방지)
         try:
@@ -183,11 +192,14 @@ def fetch_detail(iid, retries=3):
             p, ar, fl = it.get('price') or {}, (it.get('area') or {}).get('전용면적M2'), it.get('floor') or {}
             mc, ao = it.get('manageCost') or {}, it.get('addressOrigin') or {}
             la, lo = (it.get('randomLocation') or {}).get('lat'), (it.get('randomLocation') or {}).get('lng')
+            desc = f"{it.get('title') or ''} {it.get('description') or ''}"
             return {'id': iid, 'sales': it.get('salesType'), 'deposit': p.get('deposit'), 'rent': p.get('rent'),
                     'm2': ar, 'floor': fl.get('floor'), 'floors': fl.get('allFloors'), 'manage': mc.get('amount'),
                     'svc': it.get('serviceType'), 'room': it.get('roomType'), 'addr': ao.get('localText') or it.get('jibunAddress'),
                     'approve': it.get('approveDate'), 'movein': it.get('moveinDate'), 'title': it.get('title'),
-                    'img': it.get('imageThumbnail'), 'pnu': it.get('pnu'), 'lat': la, 'lng': lo}
+                    'img': it.get('imageThumbnail'), 'pnu': it.get('pnu'), 'lat': la, 'lng': lo,
+                    'res': (it.get('residenceType') or '').strip(), 'ncb': bool(it.get('nonCompliantBuilding')),
+                    'nojeonip': bool(NO_JEONIP.search(desc)), 'biz': bool(BIZ.search(desc))}
         except Exception:
             if attempt == retries - 1:
                 return None
@@ -403,6 +415,7 @@ h1{margin:0 0 6px;font-size:18px}.sum{font-size:13px;color:var(--muted)}.sum b{c
 .commute{font-size:12px;color:var(--accent);margin-top:4px;font-weight:600}.commute .dim{color:var(--sub);font-weight:400}.addr{font-size:12px;color:var(--sub);margin-top:3px}
 .ml{margin-left:auto}.hidden{display:none}
 .stay{font-size:11px;color:var(--sub);margin-top:3px}
+.why{font-size:11px;color:var(--sub);margin-top:3px}
 #bldg{padding:14px 20px;overflow-x:auto}.bcap{font-size:12px;color:var(--sub);margin-bottom:8px}
 .bt{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px}
 .bt th,.bt td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
@@ -591,6 +604,31 @@ def is_duplex(r):
     t = r.get('title') or ''
     return r.get('room') == '복층형원룸' or ('복층' in t and not _DUP_NEG.search(t))
 
+# 싼 이유 태그 — 가격을 끌어내리는 알려진 요인(층·연식·면적·법적 용도). 표시만 하고 거르지 않음(DECISIONS 5·6·8).
+# 용도(residenceType)는 중개사 자유입력이라 표기가 제각각 → 주거 외 신호어만 잡음. 설비 상태·침수는 데이터에 없음.
+WARN_USE = re.compile(r'근린|근생|업무|상가|사무')
+def approve_year(v):   # 사용승인일 자유표기('19970603'·'1999.12.8'·'\t2002-04-16 '·'96.11.01') → 연도, 못 읽으면 None
+    s = str(v or '').strip()
+    m = re.match(r'(\d{4})', s)
+    if m: return int(m.group(1))
+    m = re.match(r'(\d{2})\.\d', s)
+    if m: yy = int(m.group(1)); return 1900 + yy if yy > 50 else 2000 + yy
+    return None
+
+def why_tags(r):
+    t, fl_, fls = [], str(r.get('floor') or ''), str(r.get('floors') or '')
+    if fl_ == '반지하': t.append('🕳반지하')
+    elif fl_ == '옥탑방': t.append('🔝옥탑')
+    elif fl_.isdigit() and fl_ == fls and int(fls) >= 2: t.append('🔝탑층')
+    yr = approve_year(r.get('approve'))
+    if yr and yr < 2000: t.append('🏚구축')
+    if r.get('m2') and r['m2'] < 33: t.append('📐소형')
+    if WARN_USE.search(r.get('res') or ''): t.append(f"⚠️{r['res']}")
+    if r.get('ncb'): t.append('🚨위반건축물')
+    if r.get('nojeonip'): t.append('🚫전입불가')
+    if r.get('biz'): t.append('💼업무용·부가세')
+    return t
+
 # 수집은 계속하되 대시보드 기본 표시에서만 빼는 역. 칩을 누르면 언제든 켜짐.
 # 신분당선 남쪽(정자·판교·광교중앙): 통근은 짧지만 남북 단일축이라 서울 생활권 접근이 불편해 제외.
 DEFAULT_OFF_STN = {'정자', '판교', '광교중앙'}
@@ -646,6 +684,8 @@ def build_html(rows, report, ts):
         present_stn.add(stn)
         stntag = f' ({stn}역)' if stn != '기타' else ''
         mgtag = f' · 관리비 {r["manage"]:g}만' if r.get('manage') else ''
+        why = why_tags(r)
+        whyline = f'\n  <div class="why">{esc(" ".join(why))}</div>' if why else ''
         bsmt = str(r.get('floor')) in ('반지하', '옥탑방')   # 비선호 층(반지하·옥탑) — 기본 숨김
         # 초기 화면(전세탭 + 오픈형·반지하 제외)에 안 보일 카드는 미리 hidden → FOUC(깜빡임) 방지
         dup = is_duplex(r)   # 복층(직방 roomType 또는 제목) — 기본 숨김
@@ -655,7 +695,7 @@ def build_html(rows, report, ts):
  data-pnu="{esc(r.get('pnu'))}" data-bldg="{esc(bldg)}" data-addr="{esc(r['addr'])}" data-cd="{r.get('cd') or 99999}" data-cv="{esc(r.get('cv'))}" data-floor="{esc(r.get('floor'))}" data-floors="{esc(r.get('floors'))}" data-manage="{r.get('manage') or 0}" data-rttier="{rttier}" data-kw="{kw}" data-days="{days if days is not None else -1}" data-rereg="{r.get('rereg', 0)}" data-first="{r.get('first', '')}" data-lc="{1 if r.get('lc') else 0}" data-img="{r.get('img') or ''}">
  <div class="img" style="{imgstyle}"></div><div class="body">{badge}
   <div class="price">{r['sales']} {price}</div>
-  <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}{mgtag}</div>
+  <div class="meta">{r['m2']}㎡ ({pg}평) · {r.get('floor')}/{r.get('floors')}층 · {yr}준공 · {esc(r['svc'])}{mgtag}</div>{whyline}
   <div class="commute">{cmline}</div>
   <div class="addr">{esc(r['addr'])}{stntag}</div>{stay}{rtline}{sparkdiv}</div></a>''')
     if report.get('baseline'):

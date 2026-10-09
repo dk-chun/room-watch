@@ -148,6 +148,43 @@ def test_fetch_detail_maps_fields(monkeypatch):
     r = fl.fetch_detail(5)
     assert r['id'] == 5 and r['sales'] == '월세' and r['rent'] == 70 and r['m2'] == 33.1
     assert r['addr'] == '서초구 양재동' and r['floors'] == '5' and r['manage'] == 7 and r['lat'] == 37.4
+    assert r['res'] == '' and r['ncb'] is False and r['nojeonip'] is False and r['biz'] is False
+
+
+@pytest.mark.parametrize('desc,nojeonip,biz', [
+    ('전입신고 불가', True, False), ('전입 안됨', True, False), ('전입X 즉시입주', True, False),
+    ('전입이 어렵습니다', True, False), ('전입신고 가능', False, False),
+    ('전입은 불가합니다.', True, False), ('전입신고가 안됩니다', True, False), ('전입x', True, False),   # 실매물 문장
+    ('전입은 가능하지 않습니다', True, False), ('전입신고를 하지 않는 조건의 매물', True, False),
+    ('전입(X)', True, False), ('전입 ✕', True, False), ('전입신고 어렵지 않습니다', False, False),
+    ('기계식 주차 (월8만원 부가세별도)', False, False), ('부가세 포함', False, False), ('부가세는 없습니다', False, False),
+    ('(월세 부가세 10%는 별도)', False, True), ('5,000/250만(부가세 별도)', False, True),
+    ('사업자 등록이 필요합니다', False, True), ('사업자 필요 없음', False, False), ('사업자 계약도 가능', False, False),
+    ('주거용/업무용 계약 모두 가능', False, False), ('업무용이지만 전입신고가 가능', False, False),
+    ('주거/업무용 모두 가능', False, False), ('부가세 별도 없음', False, False),
+    ('▪ 업무용 매물', False, True), ('최저가 업무용 인기', False, True), ('✅ 업무용, 세금계산서 발행', False, True), ('사업자 계약 가능한 호실', False, False),
+    ('사업자계약 부가세별도', False, True), ('임대료 부가세 별도', False, True), ('사무용으로 숙소불가', False, True),
+    ('숙소사용불가', False, True), ('업무용 호실!', False, True), ('사업자 필요한 호실', False, True),
+    ('사업자호실', False, True), ('사업자용 숙소', False, True),
+    ('임대사업자 등록 보증보험', False, False), ('주택임대사업자계약', False, False), ('부가세 없음', False, False),
+    ('건축법상 오피스텔은 업무용이다보니', False, False), ('주거용 · 상업용 · 업무용 부동산', False, False),
+    ('전입 or 사업자 등록 가능', False, False), ('전입 또는 사업자용 물건 많이 보유', False, False),
+    ('전입가능, 사업자 계약 시 계산서 발급', False, False), ('기본옵션 (사무용집기)', False, False)])
+def test_fetch_detail_legal_flags(monkeypatch, desc, nojeonip, biz):
+    item = {'salesType': '월세', 'title': '제목', 'description': desc, 'residenceType': ' 다가구주택 / 근린생활시설 ',
+            'nonCompliantBuilding': True}
+    monkeypatch.setattr(fl, 'get', lambda url: {'item': item})
+    r = fl.fetch_detail(5)
+    assert r['res'] == '다가구주택 / 근린생활시설' and r['ncb'] is True
+    assert r['nojeonip'] is nojeonip and r['biz'] is biz
+
+
+def test_legal_regex_no_catastrophic_backtracking():
+    import time
+    t = time.time()
+    for s in ('부가세' + ' ' * 1500 + 'x', '전입' + ' ' * 1500 + 'x', '사업자' + ' ' * 1500 + 'x', '전입 ' * 5000):
+        fl.BIZ.search(s); fl.NO_JEONIP.search(s)
+    assert time.time() - t < 1   # 옛 패턴(\s* 3연속)은 부가세+공백 1000자에 3~6초
 
 
 def test_fetch_detail_retries_then_gives_up(monkeypatch):
@@ -405,6 +442,24 @@ def test_is_duplex(kw, expect):
     assert fl.is_duplex(row(**kw)) is expect
 
 
+@pytest.mark.parametrize('kw,expect', [
+    ({}, []),
+    ({'floor': '반지하'}, ['🕳반지하']), ({'floor': '옥탑방'}, ['🔝옥탑']),
+    ({'floor': '5', 'floors': '5'}, ['🔝탑층']), ({'floor': '1', 'floors': '1'}, []),
+    ({'floor': '중', 'floors': '15'}, []), ({'floor': None, 'floors': None}, []),
+    ({'approve': '19970603'}, ['🏚구축']), ({'approve': '1999.12.8'}, ['🏚구축']), ({'approve': '2000'}, []),
+    ({'approve': '96.11.01'}, ['🏚구축']), ({'approve': '24.11.15'}, []), ({'approve': '\t1998-04-16 '}, ['🏚구축']),
+    ({'approve': '공동주택(단지형다세대주택)'}, []), ({'approve': None}, []),
+    ({'m2': 32.9}, ['📐소형']), ({'m2': 33.0}, []), ({'m2': None}, []),
+    ({'res': '제2종근린생활시설'}, ['⚠️제2종근린생활시설']), ({'res': '업무시설'}, ['⚠️업무시설']),
+    ({'res': '상가주택'}, ['⚠️상가주택']), ({'res': '다가구주택 근린생활시설'}, ['⚠️다가구주택 근린생활시설']),
+    ({'res': '오피스텔'}, []), ({'res': '다세대주택'}, []),
+    ({'ncb': True}, ['🚨위반건축물']), ({'nojeonip': True}, ['🚫전입불가']), ({'biz': True}, ['💼업무용·부가세']),
+    ({'floor': '반지하', 'approve': '1990', 'm2': 30, 'ncb': True}, ['🕳반지하', '🏚구축', '📐소형', '🚨위반건축물'])])
+def test_why_tags(kw, expect):
+    assert fl.why_tags(row(**kw)) == expect
+
+
 def test_won_short():
     assert fl.won_short({'deposit': 25000, 'rent': 0}, '전세') == '2.50억'
     assert fl.won_short({'deposit': 30000, 'rent': 0}, '전세') == '3억'
@@ -459,6 +514,13 @@ def test_build_html_cards_and_flags():
     assert 'class="stnchip" data-stn="판교"' in html and 'class="stnchip on" data-stn="양재"' in html
     assert '"1": {"h": [["26.09", 18000, 18000, 0]], "m": 20000, "diff": 12}' in html
     assert '신규 1 · ❌ 빠짐 0' in html
+    # 싼 이유 태그: 있으면 한 줄, 없으면 줄 자체가 없음
+    assert '<div class="why">🕳반지하</div>' in c3 and 'class="why"' not in c1
+
+
+def test_build_html_why_tags_escaped():
+    html = fl.build_html([row(id=9, res='<근생>')], report(), 't')
+    assert '<div class="why">⚠️&lt;근생&gt;</div>' in card(html, 9)
 
 
 def test_build_html_burden_formula():
