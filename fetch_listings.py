@@ -763,7 +763,7 @@ def build_html(rows, report, ts):
  월세<input id="rcap" type="number" placeholder="상한" oninput="render()">만
  통근<input id="tcap" type="number" placeholder="상한" oninput="render()">분↓
  부담<input id="bcap" type="number" placeholder="상한" oninput="render()" title="월세+관리비+보증금×3%÷12 (만원)">만↓
- 준공<input id="ycap" type="number" placeholder="하한" oninput="render()">년↑
+ 준공<input id="ycap" type="number" placeholder="하한" value="2000" oninput="render()">년↑
  면적<input id="mcap" type="number" placeholder="하한" oninput="render()">㎡↑
  <button id="darkbtn" class="ml" onclick="toggleDark(this)">🌙 다크</button>
 </div>{region_html}<div class="grid">{''.join(cards)}</div><div id="bldg" class="hidden"></div>
